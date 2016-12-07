@@ -1,0 +1,54 @@
+function data = lk_loaddata(cfg,subs,conds,cond_include,cond_exclude)
+% THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
+cd(cfg.DrivePathData);cd('matfiles')%We're looking at Matfiles
+clear data idx fNames  
+tmp = dir('*.mat'); %tmp is a structure that contains all these names
+fNames = cell(size(tmp,1),1); %fNames is an array of cells of same size as tmp
+cnt = 1;
+
+for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
+    fNames{i,1} = tmp(i).name(1:end-4);%Adds file to list of names (w/o '.mat')
+    
+    for isubs = 1:length(subs)% Go through each relevant subject
+        if ~isempty(strfind(fNames{i,1},subs{isubs})) & ~isempty(strfind(fNames{i,1},cond_include{1}))%Does file have that sub?
+            
+            for iconds=1:length(conds)% Yes, so go through each relevant  condition
+                if ~isempty(strfind(fNames{i,1},conds{iconds})) %Does file have that condition?
+                    
+                    for iexclude=1:length(cond_exclude)%Now go through exclusion criteria
+                        if ~isempty(strfind(fNames{i,1},cond_exclude{iexclude}))%Narrow list by excluding strings
+                            idx(i)=0;
+                            skip=1; %Don't load file if it has this exclusion criteria
+                            break
+                        else skip=0;
+                        end
+                    end%end of exclusion crit check
+                    
+                    if skip==1;%if exclusion crit met, this is the end
+                        
+                    else %if not, we add a cell to the structure data
+                        idx(i) = 1;
+                        data(isubs,iconds) = load(fNames{i,1});%Load data
+                        data(isubs,iconds).EEG.condition = conds{iconds}(2);%save cond name
+                        data(isubs,iconds).EEG.conditionidx = iconds;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
+                        data(isubs,iconds).EEG.subject = subs{isubs};%save sub name
+                        data(isubs,iconds).EEG.subjectidx = isubs; %save sub idx MAY BE UNECESSARY IF DATA is 2D
+                        disp(['Loading matfile for sub ' subs{isubs} ' condition ' conds{iconds}  '...']);
+                        
+                        cnt = cnt + 1;
+                    end
+                    break %It had relevant condition, so we spare it from line below on future iterations
+                    
+                else idx(i) = 0;%Doesn't have relevant condition
+                end %On to the next condition!
+                
+            end
+            break%This file had relevant sub, so we spare it from line below on future iterations
+            
+        else idx(i) = 0;%Doesn't have relevant sub
+        end  %on to the next subject!
+       
+    end
+end
+idx = find(idx);
+end
