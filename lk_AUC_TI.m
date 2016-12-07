@@ -8,7 +8,7 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
             for ireg = 1:length(cfg.regs)%Go through each region
                 % for ielec = 1:size(data(isub,icond).EEG.data,1)%each electrode
                 
-                for iwndw = 1:size(cfg.peak.wndw,1)% each time window
+                for iwndw = 1:size(cfg.peak.target,2)% each time window
                     for isplit = 1:cfg.numsplit% each trial
                         
                         

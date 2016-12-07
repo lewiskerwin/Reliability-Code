@@ -36,7 +36,7 @@ cfg.peak.wiggle = 20;
 cfg.peak.width = 5;
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
 
-cfg.numsplit=2;
+cfg.numsplit=5;
 cfg.trialincr = 10;
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
@@ -57,7 +57,7 @@ end
 %New start to reliability (before integrating AUC) - should integrate into
 %load data
 clear reliability
-cutinitialtime=5;
+cutinitialtime=1;
 for isub=1:size(data,1)
     for icond=1:size(data,2)
         reliability.amp(:,:,:,icond,isub) = data(isub,icond).EEG.data(:,cutinitialtime:size(data(isub,icond).EEG.data,2),1:cfg.trialnumber);
