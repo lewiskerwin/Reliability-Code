@@ -32,7 +32,7 @@ cfg.file.precond_exclude(1,:) = {'arm' 'PostRTMS' 'PreRTMS'};
  end
    
 cfg.peak.target = [50, 100, 200];
-cfg.peak.wiggle = [20, 30, 50];
+cfg.peak.wiggle = 20;
 cfg.peak.width = 5;
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
 
@@ -85,17 +85,14 @@ end
 reliability = lk_AUC_TI(reliability, cfg);
 %Region x wndw x split x cond x sub x TI
 
-%Quality Control to plot out splits
 figure
 iTI =10;
 for isplit=1:cfg.numsplit
-    
     splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-    splitstoplot(:,isplit) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3));
-   
+    plot(reliability.times(500:750,icond,isub),mean(reliability.amp(1,500:750,1:20,2,4),3)');
+    
 end
-plot(reliability.times(500:750,icond,isub),abs(splitstoplot));
-legend(isplit,'Location','southeast');
+
 
 
 %%
