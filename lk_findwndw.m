@@ -4,7 +4,9 @@ clear lat amplat
 
 for iTI = 1:cfg.trialnumber/cfg.trialincr
 
-    
+    for isplit = 1:cfg.numsplit
+                    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;            
+                    
     for ireg = 1:size(cfg.regs,2)
         for icond = 1:size(cfg.file.preconds)
             for isub = 1:size(cfg.file.subs)
@@ -13,8 +15,6 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
                 
                 for iPEAK = 1:length(cfg.peak.target) %Go through each PEAK (e.g. 50, 100 200)
                    
-                    for isplit = 1:cfg.numsplit
-                    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;            
                     
                     wider= 0;
                     clear loc; peak = [];
