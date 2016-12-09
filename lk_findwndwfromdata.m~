@@ -10,7 +10,7 @@ for isub = 1:size(cfg.file.subs)
         %condcomb(:,ireg,isub) = zeros(size(data(isub,icond).EEG.data,2),1);
         %AVERAGE OVER ALL TRIALS FOR THIS COND/SUB/REGION
         for icond=1:size(data,2)
-           conddata(icond,:) = (mean(mean(data(isub,icond).EEG.data(cfg.regs(ireg).chan,:,1:100),1),3));
+           conddata(icond,:) = (mean(mean(data(isub,icond).EEG.data(cfg.regs(ireg).chan,:,1:107),1),3));
          
         end
         %COMBINE ACROSS BOTH CONDITIONS
@@ -47,7 +47,7 @@ for isub = 1:size(cfg.file.subs)
         %Now delcare new windows
         
         
-        wndw(ireg,:,isub) = data(isub,icond).EEG.times(bestloc);
+        wndw(ireg,:,isub) = bestloc(:)-500;
         wndwnames = strread(num2str(cfg.peak.target),'%s');
     
         

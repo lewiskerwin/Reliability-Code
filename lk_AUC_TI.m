@@ -13,7 +13,7 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
                         
                         
                         TEPtimes = reliability.times(:,icond,isub); %Name array for the TEP times from raw data
-                        peakrange = find( cfg.peak.width >= abs(TEPtimes - reliability.amplat(ireg,iwndw,isplit,icond,isub,iTI))); %Make array of idx of desired times
+                        peakrange = find( cfg.peak.width >= abs(TEPtimes - reliability.avgamplat(ireg,iwndw,isub,iTI))); %Make array of idx of desired times
                         splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
 
                         tmp = trapz(peakrange,mean(mean(reliability.amp(cfg.regs(ireg).chan,peakrange,splitrange,icond,isub),1),3)); %Intgrate data at that index

@@ -27,21 +27,26 @@ cfg.file.precond_exclude(1,:) = {'arm' 'PostRTMS' 'PreRTMS'};
  cfg.regs(5).name = 'Centroparietal';cfg.regs(5).chan = [5 12 13 14 25];
  cfg.regs(6).name = 'Centrofrontal';cfg.regs(6).chan = [2 8 18 19 31];
  %cfg.regs(7).name = 'Global';cfg.regs(7).chan = 1:64;
+ cfg.regnumber = size(cfg.regs,2);
+ 
  for ireg=1:length(cfg.regs)
         axisname{ireg} = cfg.regs(ireg).name;
  end
    
 cfg.peak.target = [50, 100, 200];
-cfg.peak.wiggle = [20, 30, 50];
+cfg.peak.wiggle = [20, 30, 50]; %How far from target condition avg can be
+cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
 cfg.peak.width = 5;
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
 
-cfg.numsplit=5;
+cfg.numsplit= 2;
 cfg.trialincr = 10;
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
 data = lk_loaddata(cfg);
 
+cfg.condnumber= size(data,2);
+cfg.subnumber= size(data,1);
 
 %FIND LOWEST # TRIALS
 cfg.trialnumber =150;
@@ -65,8 +70,29 @@ for isub=1:size(data,1)
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
     end
 end
+%%
+%SUBTRACT BASELINE AMPLITUDE
+% %The below code tells me that the period is at least 60 ms and therefore
+% %that avg over 10 trials will not swamp.
+% toplot = squeeze(mean(reliability.amp(cfg.regs(1).chan,400:550,18:20,1,1),1));
+% plot(toplot);
+baselinerange = (cfg.ponset-11):(cfg.ponset-1);
+reliability.BLA(:,:,:,:) = mean(reliability.amp(:,baselinerange,:,:,:),2);
+%elec x trials x cond x sub
 
+% %And this code displays the same trials to doublecheck
+%mean(reliability.BLA(cfg.regs(1).chan,18:20,1,1),1)
+for ireg=1:cfg.regnumber
+    for itrial = 1:cfg.trialnumber
+        for icond = 1:cfg.condnumber
+            for isub = 1:cfg.subnumber
+                reliability.amp(ireg,:,itrial,icond,isub) = reliability.amp(ireg,:,itrial,icond,isub) - reliability.BLA(ireg,itrial,icond,isub);
+            end 
+        end
+    end
+end
 
+%%
 %FIND PEAK AND WINDOWS
 
 
@@ -77,8 +103,9 @@ end
 % latencies of all 100 individually? variance of latencies individuall?
 % if different (or high variances) this at least tells em why there's so
 % much disagreement between splits here
-[reliability.amplat] =   lk_findwndw(reliability,cfg);
-% Region x wndw x split x cond x sub x TI
+[reliability.amplat, reliability.avgamplat] =   lk_findwndw(reliability,cfg);
+% Region x wndw x split x cond x sub x TI   
+% Reg x wndw x cond x sub x TI - average amplitude latency
 
 
 %CALC AUC FOR THESE WINDOWS
@@ -86,12 +113,27 @@ reliability = lk_AUC_TI(reliability, cfg);
 %Region x wndw x split x cond x sub x TI
 
 %Quality Control to plot out splits
-figure
+%Change for GIT
+
 iTI =10;
+span = 10;
+clear splitrange splitstoplot
+
 for isplit=1:cfg.numsplit
     
     splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-    splitstoplot(:,isplit) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3));
+    splitstoplot(:,isplit) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3),span);
+   
+end
+plot(reliability.times(500:750,icond,isub),abs(splitstoplot));
+legend(isplit,'Location','southeast');
+
+iTI =10;
+isplit=1;
+for ispan=1:5
+    span =5*ispan;
+    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
+    splitstoplot(:,ispan) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3),span);
    
 end
 plot(reliability.times(500:750,icond,isub),abs(splitstoplot));
@@ -106,17 +148,18 @@ legend(isplit,'Location','southeast');
 %reliability.AUC = zeros(size(cfg.regs,2),size(cfg.peak.wndw,1),150,size(cfg.file.preconds,1),size(cfg.file.subs,1));
 
 [cfg.peak.wndw, cfg.peak.wndwnames] = lk_findwndwfromdata(data,cfg);
+%reg x wndw x sub x width
 
 data = lk_AUC_data(data,cfg);
+%sub x cond . reg x wndw x trial
 
-
-clear reliability
+clear reliabilityfromdata
 for isub=1:size(data,1)
     for icond=1:size(data,2)
-        reliability.ampauc_bytrial(:,:,:,icond,isub) = data(isub,icond).EEG.AUC(:,:,1:cfg.trialnumber);
+        reliabilityfromdata.ampauc_bytrial(:,:,:,icond,isub) = data(isub,icond).EEG.AUC(:,:,1:cfg.trialnumber);
     end
 end
-
+%reg x wndw x trial x cond x sub
 
 % %FILL RELIABILITY.AUCTI (trial increment)-THis code only takes avg over
 % all trials for each condition
@@ -130,9 +173,10 @@ for iTI=1:cfg.trialnumber/cfg.trialincr%Increase trial
     splitlength = floor(iTI*cfg.trialincr/cfg.numsplit);
     for isplit =1:cfg.numsplit %Go through each split
         splitrange = (isplit-1)*(iTI*cfg.trialincr/cfg.numsplit)+1:(isplit)*(iTI*cfg.trialincr/cfg.numsplit);
-        reliability.ampauc(:,:,isplit,:,:,iTI) = mean(reliability.ampauc_bytrial(:,:,splitrange,:,:),3);
+        reliabilityfromdata.ampauc(:,:,isplit,:,:,iTI) = mean(reliabilityfromdata.ampauc_bytrial(:,:,splitrange,:,:),3);
     end
 end
+% reg x wndw x split x cond x sub x TI
 %%
 %Label the dimensions of AUC
 reliability.AUCdim{1} = 'region';
@@ -147,9 +191,9 @@ reliability = lk_varianceTI(reliability,cfg);
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON ICC
 figure('Position', [100, 100, 1450, 1200])
 iccdim=3;%We only care about ICC between subjects
-for iwndw=1:size(cfg.peak.wndw,1)
+for iwndw=1:size(cfg.peak.target,2)
    for ireg = 1:size(cfg.regs,2) 
-        subplot(size(cfg.peak.wndw,1),2,(iwndw-1)*2+1)
+        subplot(size(cfg.peak.target,2),2,(iwndw-1)*2+1)
         plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.ICC(:,iwndw,iccdim,:)));
         legend(cfg.regs(:).name,'Location','southeast');
         TITLE = 'ICC between %ss at %s-ms peak \n as a function of trial number';
@@ -157,12 +201,15 @@ for iwndw=1:size(cfg.peak.wndw,1)
          xlabel('Trial Number');
            end
 end
-
+%PLOT EFFECT OF INTREASING TRIAL NUMBER ON SDC(percentage)
 sdcdim=2;
-for iwndw=1:size(cfg.peak.wndw,1)
+for iwndw=1:size(cfg.peak.target,2)
    for ireg = 1:size(cfg.regs,2) 
-        subplot(size(cfg.peak.wndw,1),2,iwndw*2)
+        subplot(size(cfg.peak.target,2),2,iwndw*2)
         plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.SDC(:,iwndw,sdcdim,:)));
+        %Tried plotting percent SDC, wasn't pretty.
+        %plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(mean(mean(mean(reliability.ampauc(:,iwndw,:,:,:,:),3),4),5)));
+
         legend(cfg.regs(:).name,'Location','northeast');
         TITLE = 'Smallest Detectable Change In a Post-Intervention %s \n at %s-ms peak as a function of trial number';
         title(sprintf(TITLE,reliability.ICCdim{sdcdim},cfg.peak.wndwnames{iwndw}));
@@ -171,7 +218,9 @@ for iwndw=1:size(cfg.peak.wndw,1)
 end
 
 
-
+figure
+toplot = squeeze(mean(mean(mean(reliability.amp(cfg.regs(1).chan,500:750,:,:,:),1),3),4));
+plot(toplot)
 %%
 %Older binning that didn't do trial increment
 cfg.numsplit = 2;
