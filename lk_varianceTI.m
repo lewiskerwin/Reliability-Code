@@ -35,6 +35,7 @@ for iTI=1:cfg.trialnumber/cfg.trialincr
                 %MSB = varB*k + varW (varW is essentially the same as MSW)
                 reliability.VAR(ireg,iwndw,idim,iTI) = (MSB-MSW)/(size(miniAUC,2)*size(miniAUC,3));
                 reliability.VAR_B(ireg,iwndw,idim,iTI) = var(mean(mean(miniAUC,2),3));%Alternatively, we could just take variance which ignores the snd term in paper's fomrula
+                
                 %Another way to calculate the above line: = (MSB)/(size(miniAUC,2)*size(miniAUC,3))
                 
                 %Using similar formulat from same paper calculate ICC
@@ -69,7 +70,7 @@ for iTI=1:cfg.trialnumber/cfg.trialincr
                 reliability.SEM(ireg,iwndw,idim,iTI) = (tempvar)^.5;
                 reliability.SDC(ireg,iwndw,idim,iTI) = reliability.SEM(ireg,iwndw,idim,iTI)*2^.5*1.96;
                 reliability.SDCpercent(ireg,iwndw,idim,iTI) = reliability.SDC(ireg,iwndw,idim,iTI)/ abs(mean(mean(mean(reliability.ampauc(ireg,iwndw,:,:,:,10),3),4),5));
-                display(['In ' cfg.regs(ireg).name ' the minimum change in AUC to ensure a change between two ' reliability.AUCdim{2+idim} 's is ' num2str(reliability.SDC(ireg,iwndw,idim,iTI))]);
+                display(['In ' cfg.regs(ireg).name ' the minimum change in AUC to ensure a change between two ' reliability.aucdim{2+idim} 's is ' num2str(reliability.SDC(ireg,iwndw,idim,iTI))]);
             end
             
             

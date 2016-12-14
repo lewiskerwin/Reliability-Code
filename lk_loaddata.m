@@ -45,11 +45,14 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     %%
     %Make sure file contains one of desired conditions
     for icond=1:length(cfg.file.preconds)% Go through each relevant condition
-        if ~(isempty(strfind(fNames{i,1},['pre' cfg.file.preconds{icond}])) & isempty(strfind(fNames{i,1},['_' cfg.file.preconds{icond} '_']))) %Does file have that condition?
-            idx(i) = 1;
-            break
-        else idx(i) =0;
+        for iprefix = 1:size(cfg.file.precondprefix,1)
+            if ~isempty(strfind(fNames{i,1},[cfg.file.precondprefix{iprefix,1} cfg.file.preconds{icond} cfg.file.precondprefix{iprefix,2}]))
+                idx(i)=1; break
+            else idx(i) =0;
+            end
         end
+        if idx(i)==1;break; else; end  
+            
     end
     if ~idx(i),continue,end
 

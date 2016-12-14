@@ -1,8 +1,7 @@
-%Pearson_2 is designed to show correlation between splits, conditions AND
-%SUBJECTS. Rather than using each subject as a data point, it uses each
-%region-window combination as a data point (24 per distribution).
-function reliability=lk_pearson_2(reliability,cfg,iTI)
- reliability.pearson_2= []; reliability.ttest =[];
+%finitepearson is designed to show correlation between splits, conditions AND
+%SUBJECTS. Unlike pearson2 it uses every split,sub,and cond as indvl point.
+function reliability=lk_finitepearson(reliability,cfg,ireg,iwndw,iTI)
+ reliability.pearson_finite= []; reliability.ttest =[];
 
 PearsonAUC = reliability.ampauc(:,:,:,:,:,iTI);
 width = 3; %This is the width (or number of columns) of multi-plot figure
@@ -18,7 +17,7 @@ for idim=startdim:5
         for jvar=1:size(PearsonAUC,startdim)
             x = reshape(mean(mean(PearsonAUC(:,:,ivar,:,:),5),4), [], 1);
             y = reshape(mean(mean(PearsonAUC(:,:,jvar,:,:),5),4), [], 1);
-            [reliability.pearson_2(ivar,jvar,idim,iTI),reliability.pearson_2p(ivar,jvar,idim,iTI)] = corr(x,y);
+            reliability.pearson_2(ivar,jvar,idim,iTI) = corr(x,y);
             [reliability.ttest.h(ivar,jvar,idim,iTI),reliability.ttest.p(ivar,jvar,idim,iTI)]= ttest(x,y);
             variances = cov(x,y);
             reliability.CCC(ivar,jvar,idim,iTI)= 2*variances(1,2)/(variances(1,1)+variances(2,2)+(mean(x)-mean(y))^2);

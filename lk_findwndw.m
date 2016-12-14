@@ -18,9 +18,9 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
                 while 1
                     targettimerange = [cfg.peak.target(iPEAK)-cfg.peak.wiggle(iPEAK)-wider, cfg.peak.target(iPEAK)+cfg.peak.wiggle(iPEAK)+wider];
                     targettimeidx = find( alltimes >= targettimerange(1) & alltimes <= targettimerange(2));
-                    targetdata = double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*floor(cfg.trialnumber/cfg.trialincr),:,isub),1),3),4)'));
+                   % targetdata = double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*floor(cfg.trialnumber/cfg.trialincr),:,isub),1),3),4)'));
                     %temporarily took out smoothing
-                    %targetdata = smooth(double(abs(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,:,icond,isub),1),3)')),5);
+                    targetdata = smooth(double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*floor(cfg.trialnumber/cfg.trialincr),:,isub),1),3),4)')),5);
                     [peak, loc] = findpeaks(targetdata);
                     if isempty(peak) wider = wider +5;
                     else break; end

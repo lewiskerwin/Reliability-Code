@@ -3,23 +3,22 @@
 % ---------------------------------
 close all
 [cfg] = spTMS_start();      % INITIALIZES ALL VALUES
+[cfg.stabilityresults] = uigetdir('','Pick Results folder in stability proj');
+% 
+% cfg.file.subs = {'112';'113';'114'; '115'}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+% cfg.file.precond_include(1,:) = {'fromConcat_120'}; 
+% cfg.file.precond_exclude(1,:) = {'arm' 'PostRTMS' 'PreRTMS'};
 
-% ---------------------------------
-% INPUT VALUES FOR CODE
+
+%Cammie Config
 cfg.file.subs = {'112';'113';'114'; '115'}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
-cfg.file.precond_include(1,:) = {'fromConcat_120'}; 
-cfg.file.precond_exclude(1,:) = {'arm' 'PostRTMS' 'PreRTMS'};
+cfg.file.precondprefix = {'pre', ''; '_', '_'};
+cfg.file.precond_include(1,:) = {}; 
+cfg.file.precond_exclude(1,:) = { };
+
 
 %So lets find out how we'll bin up the AUCs
- cfg.regs = [];
-%  These ones are new, but for QC I'm using Corey's
-%  cfg.regs(1).name = 'Left DLPFC';cfg.regs(1).chan = [17 18 29 30];
-%  cfg.regs(2).name = 'Right DLPFC';cfg.regs(2).chan = [8 9 20 21];
-%  cfg.regs(3).name = 'Left Parietal';cfg.regs(3).chan = [26 27];
-%  cfg.regs(4).name = 'Right Parietal';cfg.regs(4).chan = [23 24];
-%  cfg.regs(5).name = 'Occipital';cfg.regs(5).chan = [49 50 51];
-%  cfg.regs(6).name = 'Central';cfg.regs(6).chan = 1:7;
- 
+ cfg.regs = []; 
  cfg.regs(1).name = 'Left DLPFC';cfg.regs(1).chan = [17 18 29 30];
  cfg.regs(2).name = 'Right DLPFC';cfg.regs(2).chan = [8 9 20 21];
  cfg.regs(3).name = 'Left Parietal';cfg.regs(3).chan = [26 27];
@@ -28,13 +27,12 @@ cfg.file.precond_exclude(1,:) = {'arm' 'PostRTMS' 'PreRTMS'};
  cfg.regs(6).name = 'Centrofrontal';cfg.regs(6).chan = [2 8 18 19 31];
  %cfg.regs(7).name = 'Global';cfg.regs(7).chan = 1:64;
  cfg.regnumber = size(cfg.regs,2);
- 
  for ireg=1:length(cfg.regs)
         axisname{ireg} = cfg.regs(ireg).name;
  end
    
-cfg.peak.target = [50, 100, 200];
-cfg.peak.wiggle = [20, 30, 50]; %How far from target condition avg can be
+cfg.peak.target = [30, 100, 200];
+cfg.peak.wiggle = [10, 30, 50]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
 cfg.peak.width = 5;
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
@@ -45,10 +43,7 @@ cfg.trialincr = 10;
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
 data = lk_loaddata(cfg);
 
-cfg.condnumber= size(data,2);
-cfg.subnumber= size(data,1);
-
-%FIND LOWEST # TRIALS
+%FIND COMMON DENOMENATOR OF TRIALS, CONDS, SUBS
 cfg.trialnumber =150;
 for isub=1:size(data,1)
     for icond=1:size(data,2)
@@ -57,6 +52,9 @@ for isub=1:size(data,1)
         else; end      
     end
 end
+cfg.condnumber= size(data,2);
+cfg.subnumber= size(data,1);
+
 
 %%
 %New start to reliability (before integrating AUC) - should integrate into
@@ -70,120 +68,38 @@ for isub=1:size(data,1)
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
     end
 end
-%%
-%SUBTRACT BASELINE AMPLITUDE
-% %The below code tells me that the period is at least 60 ms and therefore
-% %that avg over 10 trials will not swamp.
-% toplot = squeeze(mean(reliability.amp(cfg.regs(1).chan,400:550,18:20,1,1),1));
-% plot(toplot);
-baselinerange = (cfg.ponset-11):(cfg.ponset-1);
-reliability.BLA(:,:,:,:) = mean(reliability.amp(:,baselinerange,:,:,:),2);
-%elec x trials x cond x sub
 
-% %And this code displays the same trials to doublecheck
-%mean(reliability.BLA(cfg.regs(1).chan,18:20,1,1),1)
-for ireg=1:cfg.regnumber
-    for itrial = 1:cfg.trialnumber
-        for icond = 1:cfg.condnumber
-            for isub = 1:cfg.subnumber
-                reliability.amp(ireg,:,itrial,icond,isub) = reliability.amp(ireg,:,itrial,icond,isub) - reliability.BLA(ireg,itrial,icond,isub);
-            end 
-        end
-    end
-end
+%BASELINE CORRECT PER COREY'S REC (significantly altars some conditions and not others, SDC lower without this)
+[reliability] = lk_BLC(reliability,cfg);
 
-%%
-%FIND PEAK AND WINDOWS
-
-
-% May want to QC since results kinda disconcerting: lots of latency
-% differences... also the average of latencies is not the latency of
-% averages...Maybe check that this is the case on the scale of all trials?
-% (i.e. all 100 averaged gives what latency(chekc with CANVAS) and avg of
-% latencies of all 100 individually? variance of latencies individuall?
-% if different (or high variances) this at least tells em why there's so
-% much disagreement between splits here
+%FIND LATENCY OF INVDL TRIALS AND EACH SUB'S AVG
 [reliability.amplat, reliability.avgamplat] =   lk_findwndw(reliability,cfg);
 % Region x wndw x split x cond x sub x TI   
 % Reg x wndw x cond x sub x TI - average amplitude latency
 
-
-%CALC AUC FOR THESE WINDOWS
+%CALC AUC FOR THESE AVG LATENCIES
 reliability = lk_AUC_TI(reliability, cfg);
 %Region x wndw x split x cond x sub x TI
 
-%Quality Control to plot out splits
-%Change for GIT
-
+%WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
 iTI =10;
-span = 10;
-clear splitrange splitstoplot
-
-for isplit=1:cfg.numsplit
-    
-    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-    splitstoplot(:,isplit) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3),span);
-   
-end
-plot(reliability.times(500:750,icond,isub),abs(splitstoplot));
-legend(isplit,'Location','southeast');
-
-iTI =10;
-isplit=1;
-for ispan=1:5
-    span =5*ispan;
-    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-    splitstoplot(:,ispan) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3),span);
-   
-end
-plot(reliability.times(500:750,icond,isub),abs(splitstoplot));
-legend(isplit,'Location','southeast');
-
+ireg =4;
+lk_waveformplot(reliability,cfg,iTI,ireg);
 
 %%
-%FILL RELIABILITY.AUC TO MAKE EQUAL TO DATA - I don't need to run earlier
-%to parcel findwndw into individual latencies... but might help so I can
-%write for reliability instead of data
-%6x3x107x2x4
-%reliability.AUC = zeros(size(cfg.regs,2),size(cfg.peak.wndw,1),150,size(cfg.file.preconds,1),size(cfg.file.subs,1));
+%CALCULATE PEARSON (DATA POINTS = REG/WNDW)
+for iTI=1:floor(cfg.trialnumber/cfg.trialincr)
+reliability=lk_pearson_2(reliability,cfg,iTI);
+end
 
-[cfg.peak.wndw, cfg.peak.wndwnames] = lk_findwndwfromdata(data,cfg);
-%reg x wndw x sub x width
-
-data = lk_AUC_data(data,cfg);
-%sub x cond . reg x wndw x trial
-
-clear reliabilityfromdata
-for isub=1:size(data,1)
-    for icond=1:size(data,2)
-        reliabilityfromdata.ampauc_bytrial(:,:,:,icond,isub) = data(isub,icond).EEG.AUC(:,:,1:cfg.trialnumber);
+%CAlCULATE PEARSON (DATA POINTS = SPLIT/COND/SUB)
+for iTI=1:floor(cfg.trialnumber/cfg.trialincr)
+    for ireg=1:6
+        for iwndw=1:3
+            reliability=lk_pearson_bysplit(reliability,cfg,ireg,iwndw,iTI);
+        end
     end
 end
-%reg x wndw x trial x cond x sub
-
-% %FILL RELIABILITY.AUCTI (trial increment)-THis code only takes avg over
-% all trials for each condition
-% for itrial=1:cfg.trialnumber
-%    reliability.ampaucTI(:,:,itrial,:,:)= mean(reliability.ampauc(:,:,1:itrial,:,:),3);
-% end
-
-
-%BIN AUC ACROSS TRIALS INTO n SPLITS
-for iTI=1:cfg.trialnumber/cfg.trialincr%Increase trial
-    splitlength = floor(iTI*cfg.trialincr/cfg.numsplit);
-    for isplit =1:cfg.numsplit %Go through each split
-        splitrange = (isplit-1)*(iTI*cfg.trialincr/cfg.numsplit)+1:(isplit)*(iTI*cfg.trialincr/cfg.numsplit);
-        reliabilityfromdata.ampauc(:,:,isplit,:,:,iTI) = mean(reliabilityfromdata.ampauc_bytrial(:,:,splitrange,:,:),3);
-    end
-end
-% reg x wndw x split x cond x sub x TI
-%%
-%Label the dimensions of AUC
-reliability.AUCdim{1} = 'region';
-reliability.AUCdim{2} = 'window';
-reliability.AUCdim{3} = 'split';
-reliability.AUCdim{4} = 'condition';
-reliability.AUCdim{5} = 'subject';
 
 %FIND ICC FOR EACH TRIAL SPLIT
 reliability = lk_varianceTI(reliability,cfg);
@@ -201,7 +117,27 @@ for iwndw=1:size(cfg.peak.target,2)
          xlabel('Trial Number');
            end
 end
+%PLOT EFFECT OF INTREASING TRIAL NUMBER ON  CCC(percentage)
+
+cccdim=2;
+for iwndw=1:size(cfg.peak.target,2)
+   for ireg = 1:size(cfg.regs,2) 
+        subplot(size(cfg.peak.target,2),2,iwndw*2)
+        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.finiteCCC(1,2,:,iwndw,cccdim,:)));
+        %Tried plotting percent SDC, wasn't pretty.
+        %plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(mean(mean(mean(reliability.ampauc(:,iwndw,:,:,:,:),3),4),5)));
+
+        legend(cfg.regs(:).name,'Location','northeast');
+        TITLE = 'Concordance Correlation Coeffieicient In a Post-Intervention %s \n at %s-ms peak as a function of trial number';
+        title(sprintf(TITLE,reliability.ICCdim{cccdim},cfg.peak.wndwnames{iwndw}));
+        xlabel('Trial Number'); ylabel('CCC');
+   end
+end
+
 %PLOT EFFECT OF INTREASING TRIAL NUMBER ON SDC(percentage)
+
+
+
 sdcdim=2;
 for iwndw=1:size(cfg.peak.target,2)
    for ireg = 1:size(cfg.regs,2) 
@@ -218,35 +154,14 @@ for iwndw=1:size(cfg.peak.target,2)
 end
 
 
-figure
-toplot = squeeze(mean(mean(mean(reliability.amp(cfg.regs(1).chan,500:750,:,:,:),1),3),4));
-plot(toplot)
+
 %%
-%Older binning that didn't do trial increment
-cfg.numsplit = 2;
-reliability = lk_binFromRegionsAUC(data,cfg);
-
-
-
 %PEARSON TIME - need to rewrite for AUCTI
 %start with split 1 vs 2 AND cond 1 vs cond 2 in many different splits
-reliability=lk_pearson(reliability,cfg);
+iTI=10;
+reliability=lk_pearson(reliability,cfg,iTI);
 
-%You can play with numer of splits for this function
-%numsplit = 3;
-%reliability = lk_binFromRegionsAUC(data,cfg,numsplit,wndw,subs,conds);
 
-%This gives a data point for every region-window combo
-reliability=lk_pearson_2(reliability,cfg);
-
-%for single subjects
-reliability = lk_singlepearson(reliability,data,cfg,1)
-
-%%
-%FIND VARIANCE, SEM, SDC and ICC LOOKING AT ONE REGION-WINDOW AT A TIME
-
- reliability = lk_variance(reliability, cfg);
- 
  %%
 %PRESENT ICC FINDINGS FOR HIGHEST TRIAL NUMBER
 figure
@@ -272,20 +187,7 @@ set(gca,'XTickLabel',axisname);
 set(gca,'YTick',1:4,'YTickLabel', cfg.peak.wndwnames);
    
 
-%PRESENT ICC FINDINGS FOR ALL TRIAL NUMBERS
-for itrial = cfg.trialincr:cfg.trialincr:cfg.trialnumber
-    C = reliability.ICC(:,:,3,itrial);%We only display ICC between subjects because we WANT trivial ICC values between conditions and splits
-    subplot(5,5,(itrial/cfg.trialincr))
-    imagesc(C, 'CDataMapping','scaled')
-    colorbar
-    colormap jet
-    title (['ICC across various ' reliability.dims{3} 's'])
-   % set(gca,'YTickLabel', cfg.regs.name);
-    %set(gca,'XTick',1:4,'XTickLabel', wndwNames);
-end
 
-    
-    C= reliability.SDC(:,3,1)
 %%
 %Put this on back burner for now! For project we just need pre
 % NOW THAT WE HAVE SDC, TEST ON DATA TO SEE IF SIG
@@ -331,61 +233,12 @@ squeeze(change(1,4,1,:,:))
 %Let's try group SDC (divide by square root of n)
 mean(mean(change(:,:,:,:),3),4) ./ (reliability.SDC(:,:,2)/(length(subs)^.5))
 
-    
-    %%
-%This code is designed to present the saem finddings for all dimensions
-
-%Define common axes for different comparisons
-for idim=1:length(reliability.dims)
-
-MIN(1,idim) = min(min(reliability.ICC(:,:,idim)))
-MAX(1,idim) = max(max(reliability.ICC(:,:,idim)))
-
-MIN(2,idim) = min(min(reliability.SDC(:,:,idim)))
-MAX(2,idim) = max(max(reliability.SDC(:,:,idim)))
-end
-
-clear yname
-for ireg=1:length(cfg.regs)
-   
-    yname{ireg} = cfg.regs(ireg).name
-    
-end
-
-
-figure
-for subploti=1:length(reliability.dims)
-    
-    if subploti == 3
-        %Plot ICC
-        subplot(1,3,subploti)
-        C = reliability.ICC(:,:,subploti);
-        imagesc(C, 'CDataMapping','scaled')
-        colorbar
-        colormap jet
-        title (['ICC across various ' reliability.dims{subploti} 's'])
-        set(gca,'YTickLabel', yname);
-        set(gca,'XTick',1:4,'XTickLabel', wndwNames);
-    else
-        %Plot SDC
-        subplot(1,3,subploti)
-        C = reliability.SDC(:,:,subploti);
-        imagesc(C, 'CDataMapping','scaled')
-        colorbar
-        title (['Smallest detectable change between two ' reliability.dims{subploti} 's'])
-        caxis manual
-        caxis([min(MIN(2,:)) max(MAX(2,:))]);
-        set(gca,'YTickLabel', yname);
-        set(gca,'XTick',1:4,'XTickLabel', wndwNames);
-    end
-    
-end
 
 %%
 %QUALITY CONTROL CODE
 %Make artificial data of random numbers between 0 and 1
 QC.AUC = rand(6,4,2,2,5)
-QC.AUCdim = reliability.AUCdim;
+QC.aucdim = reliability.aucdim;
 %Create correlation in sigdim
 sigdim = 4;
 for idim=1:size(QC.AUC,sigdim)

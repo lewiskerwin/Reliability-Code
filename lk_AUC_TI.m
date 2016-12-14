@@ -29,4 +29,9 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
         end
     end
 end
+reliability.aucdim{1} = 'region';
+reliability.aucdim{2} = 'window';
+reliability.aucdim{3} = 'split';
+reliability.aucdim{4} = 'condition';
+reliability.aucdim{5} = 'subject';
 end

@@ -67,7 +67,7 @@ for ireg = 1:size(reliability.AUC,1) %Go through 6 regions
            tempvar = tempvar+ reliability.VAR_B(ireg,iwndw,idim);%add to it the variance of each dim
            reliability.SEM(ireg,iwndw,idim) = (tempvar)^.5;
            reliability.SDC(ireg,iwndw,idim) = reliability.SEM(ireg,iwndw,idim)*2^.5*1.96;
-           display(['In ' cfg.regs(ireg).name ' the minimum change in AUC to ensure a change between two ' reliability.AUCdim{2+idim} 's is ' num2str(reliability.SDC(ireg,iwndw,idim))]);
+           display(['In ' cfg.regs(ireg).name ' the minimum change in AUC to ensure a change between two ' reliability.aucdim{2+idim} 's is ' num2str(reliability.SDC(ireg,iwndw,idim))]);
         end
         
        

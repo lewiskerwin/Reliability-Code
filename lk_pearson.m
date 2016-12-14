@@ -1,5 +1,5 @@
 %start with split 1 vs 2
-function reliability=lk_pearson(reliability,cfg)
+function reliability=lk_pearson(reliability,cfg,iTI)
 
 clear axisname cnt
 for ireg=1:length(cfg.regs)
@@ -8,7 +8,7 @@ for ireg=1:length(cfg.regs)
     
 end
 
-PearsonAUC = reliability.AUC;
+PearsonAUC = reliability.ampauc(:,:,:,:,:,iTI);
 cnt=1;
 FigHandle = figure('Position', [100, 100, 1450, 1200]);
 colorbar
@@ -17,7 +17,7 @@ colormap jet
 for(idim=1:2)%Goes through splits, then through condtions
     
     
-    for jdim=1:size(reliability.AUC,5-idim)%Goes through each condition when idim is 1 and each split when idim is 2
+    for jdim=1:size(reliability.ampauc,5-idim)%Goes through each condition when idim is 1 and each split when idim is 2
         for iwndw=1:size(cfg.peak.wndw,1) %Look at one window
             
             
@@ -25,32 +25,32 @@ for(idim=1:2)%Goes through splits, then through condtions
                 for jreg=1:length(cfg.regs)
                     x = reshape(PearsonAUC(ireg,iwndw,1,jdim,:), [], 1);
                     y = reshape(PearsonAUC(jreg,iwndw,2,jdim,:), [], 1);
-                    reliability.pearson(ireg,jreg,iwndw,idim,jdim) = corr(x,y);
+                    reliability.pearson(ireg,jreg,iwndw,idim,jdim,iTI) = corr(x,y);
                 end
                 
             end
-            pearson_summary(:,iwndw) = diag(reliability.pearson(:,:,iwndw,idim,jdim));%This will become the final, summary pearson plot
+            pearson_summary(:,iwndw) = diag(reliability.pearson(:,:,iwndw,idim,jdim,iTI));%This will become the final, summary pearson plot
             
-            subplot(size(reliability.AUC,3)+size(reliability.AUC,4),size(reliability.AUC,2)+1,cnt)
-            imagesc(reliability.pearson(:,:,iwndw,idim,jdim))
+            subplot(size(reliability.ampauc,3)+size(reliability.ampauc,4),size(reliability.ampauc,2)+1,cnt)
+            imagesc(reliability.pearson(:,:,iwndw,idim,jdim,iTI))
             title (['Pearson Correlation from ' cfg.peak.wndwnames{iwndw} ' ms' ])
             set(gca,'YTickLabel', axisname);
             set(gca,'XTickLabel', axisname);
             set(gca, 'XAxisLocation', 'top');
-            xlabel([reliability.AUCdim{5-idim} ' ' num2str(jdim) ' ' reliability.AUCdim{idim+2} ' 1']);
-            ylabel([reliability.AUCdim{5-idim} ' ' num2str(jdim) ' ' reliability.AUCdim{idim+2} ' 2']);
+            xlabel([reliability.aucdim{5-idim} ' ' num2str(jdim) ' ' reliability.aucdim{idim+2} ' 1']);
+            ylabel([reliability.aucdim{5-idim} ' ' num2str(jdim) ' ' reliability.aucdim{idim+2} ' 2']);
             caxis([min(-1) max(1)]);
             cnt=cnt+1;
         end
     
     
     %This adds a summary table (columns are windows, rows are regions)  
-    subplot(size(reliability.AUC,3)+size(reliability.AUC,4),size(reliability.AUC,2)+1,cnt)
+    subplot(size(reliability.ampauc,3)+size(reliability.ampauc,4),size(reliability.ampauc,2)+1,cnt)
     imagesc(pearson_summary)
     colorbar
     colormap jet
     TITLE = 'Pearson Correlation Summary Table \n of %s %d between %ss';
-    title (sprintf(TITLE,reliability.AUCdim{5-idim},jdim,reliability.AUCdim{idim+2}))
+    title (sprintf(TITLE,reliability.aucdim{5-idim},jdim,reliability.aucdim{idim+2}))
     set(gca,'YTickLabel', axisname,'XTick',1:4,'XTickLabel', cfg.peak.wndwnames);
     set(gca, 'XAxisLocation', 'top');
     xlabel({'Window'});ylabel({'Region'});
