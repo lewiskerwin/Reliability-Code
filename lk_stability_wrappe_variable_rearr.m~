@@ -70,12 +70,11 @@ for isub=1:size(data,1)
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
         
         
-%         tablerange = ((cnt-1)*cfg.trialnumber)+1:cnt*cfg.trialnumber;
-%         Table(tablerange,1) = (1:cfg.trialnumber)';
-%         Table(tablerange,2) = table(permute(reliability.amp(:,:,:,icond,isub),[3 1 2 4 5]));
-%         Table(tablerange,3) = cfg.file.subs(isub);
-%         Table(tablerange,4) = cfg.file.preconds(icond);
-%         cnt = cnt+1;
+        tablerange = ((cnt-1)*cfg.trialnumber)+1:cnt*cfg.trialnumber;
+        Table(tablerange,1) = table(permute(reliability.amp(:,:,:,icond,isub),[3 1 2 4 5]));
+        Table(tablerange,2) = cfg.file.subs(isub);
+        Table(tablerange,3) = cfg.file.preconds(icond);
+        cnt = cnt+1;
 
     end
 end

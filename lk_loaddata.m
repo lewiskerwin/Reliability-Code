@@ -1,6 +1,6 @@
 function data = lk_loaddata(cfg)
 % THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
-cd(cfg.DrivePathData);cd('matfiles')%We're looking at Matfiles
+cd(cfg.DrivePathData);cd('matfiles/For_Lewis')%We're looking at Matfiles
 clear data idx fNames  include 
 clear reliability
 tmp = dir('*.mat'); %tmp is a structure that contains all these names
@@ -51,7 +51,7 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
             else idx(i) =0;
             end
         end
-        if idx(i)==1;break; else; end  
+        if idx(i);break; else; end  
             
     end
     if ~idx(i),continue,end

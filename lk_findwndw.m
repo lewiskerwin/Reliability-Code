@@ -2,11 +2,12 @@ function [amplat, avgamplat] = lk_findwndw(reliability,cfg)
 
 clear lat amplat
 
-for iTI = 1:cfg.trialnumber/cfg.trialincr
+for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     
+    iTI
     
     for ireg = 1:size(cfg.regs,2)
-        for isub = 1:size(cfg.file.subs)
+        for isub = 1:size(cfg.file.subs,1)
             
             %These are the arrays of peak locations and peak amplitudes that are near each PEAK
             
@@ -20,12 +21,17 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
                     targettimeidx = find( alltimes >= targettimerange(1) & alltimes <= targettimerange(2));
                    % targetdata = double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*floor(cfg.trialnumber/cfg.trialincr),:,isub),1),3),4)'));
                     %temporarily took out smoothing
-                    targetdata = smooth(double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*floor(cfg.trialnumber/cfg.trialincr),:,isub),1),3),4)')),5);
+                    targetdata = smooth(double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*cfg.trialincr,:,isub),1),3),4)')),5);                    
                     [peak, loc] = findpeaks(targetdata);
+                   
                     if isempty(peak) wider = wider +5;
                     else break; end
                 end
-                [bestpeak, bestidx] = max(peak);
+                
+                if size(peak,1)==1 bestpeak=peak; bestidx=1; 
+                else [bestpeak, bestidx] = max(peak);
+                end
+                
                 bestloc = loc(bestidx);
                 avgamplat(ireg,iPEAK,isub,iTI) = bestloc-1 + (cfg.peak.target(iPEAK)-cfg.peak.wiggle(iPEAK));
                 
@@ -44,6 +50,13 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
                             targettimerange = [newpeaktarget-cfg.peak.precision(iPEAK)-wider, newpeaktarget+cfg.peak.precision(iPEAK)+wider];
                             targettimeidx = find( alltimes >= targettimerange(1) & alltimes <= targettimerange(2));
                             targetdata = smooth(double(abs(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,splitrange,icond,isub),1),3)')),10);
+                            %QC to ensure there's actually data here
+                            if ~any(targetdata) 
+                                errormsg = 'Error! %s at %d ms in subject %s cond %s is empty!';
+                                disp(sprintf(errormsg,cfg.regs(ireg).name,cfg.peak.target(iPEAK),cfg.file.subs{isub},cfg.file.preconds{icond})); 
+                                break;
+                            else end;
+                            
                             [peak, loc] = findpeaks(targetdata);
                             if isempty(peak) wider = wider +5;
                             else break; end
