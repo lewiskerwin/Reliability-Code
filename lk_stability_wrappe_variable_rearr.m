@@ -91,7 +91,25 @@ end
 
 %CALC AUC FOR THESE AVG LATENCIES
 reliability = lk_AUC_TI(reliability, cfg);
-%Region x wndw x split x cond x sub x TI
+%Region x wndw x trial x cond x sub x TI
+
+%LUMP BY CONDITION
+clear reliability.ampauccond
+reliability.ampauccond = mean(reliability.ampauc(:,:,:,:,:,:,:),3)
+%SQUeeze this matrix in analyzis function so that like split matrix it has
+%only the thrid dimension analyzed!
+
+%LUMP BY SPLIT
+for isplit = 1:cfg.numsplit
+    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
+    reliability.ampaucsplit(:,:,isplit,:,:,:) = mean(reliability.ampauc(:,:,splitrange,:,:,:,:),3);
+end
+
+%LUMP BY ALTERNATING TRIALS (ODD V EVEN WHEN NUMSPLIT=2)
+for isplit = 1:cfg.numsplit
+    splitrange = (0:cfg.numsplit:cfg.trialnumber-cfg.numsplit)+isplit;
+    reliability.ampaucalt(:,:,isplit,:,:,:) = mean(reliability.ampauc(:,:,splitrange,:,:,:,:),3);
+end
 
 %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
 iTI =10;
@@ -101,6 +119,8 @@ lk_waveformplot(reliability,cfg,iTI,ireg);
 ireg=2;
 lk_waveformplot_cammie(reliability,cfg,ireg);
 %NOTE: Code only looks at condition pre1!
+
+%NEXT: Squeeze, reshape, boostrap and analyze
 
 %%
 %CALCULATE PEARSON (DATA POINTS = REG/WNDW)

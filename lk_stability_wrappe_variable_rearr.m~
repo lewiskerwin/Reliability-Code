@@ -70,11 +70,12 @@ for isub=1:size(data,1)
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
         
         
-        tablerange = ((cnt-1)*cfg.trialnumber)+1:cnt*cfg.trialnumber;
-        Table(tablerange,1) = table(permute(reliability.amp(:,:,:,icond,isub),[3 1 2 4 5]));
-        Table(tablerange,2) = cfg.file.subs(isub);
-        Table(tablerange,3) = cfg.file.preconds(icond);
-        cnt = cnt+1;
+%         tablerange = ((cnt-1)*cfg.trialnumber)+1:cnt*cfg.trialnumber;
+%         Table(tablerange,1) = (1:cfg.trialnumber)';
+%         Table(tablerange,2) = table(permute(reliability.amp(:,:,:,icond,isub),[3 1 2 4 5]));
+%         Table(tablerange,3) = cfg.file.subs(isub);
+%         Table(tablerange,4) = cfg.file.preconds(icond);
+%         cnt = cnt+1;
 
     end
 end
@@ -90,7 +91,25 @@ end
 
 %CALC AUC FOR THESE AVG LATENCIES
 reliability = lk_AUC_TI(reliability, cfg);
-%Region x wndw x split x cond x sub x TI
+%Region x wndw x trial x cond x sub x TI
+
+%LUMP BY CONDITION
+clear reliability.ampauccond
+reliability.ampauccond = mean(reliability.ampauc(:,:,:,:,:,:,:),3)
+%SQUeeze this matrix in analyzis function so that like split matrix it has
+%only the thrid dimension analyzed!
+
+%LUMP BY SPLIT
+for isplit = 1:cfg.numsplit
+    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
+    reliability.ampaucsplit(:,:,1,:,:,:) = mean(reliability.ampauc(:,:,splitrange,:,:,:,:),3);
+end
+
+%LUMP BY ALTERNATING TRIALS (ODD V EVEN)
+for isplit = 1:cfg.numsplit
+    splitrange = (0:cfg.numsplit:cfg.trialnumber).*2-2+isplit;
+    reliability.ampaucalt(:,:,1,:,:,:) = mean(reliability.ampauc(:,:,splitrange,:,:,:,:),3);
+end
 
 %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
 iTI =10;
