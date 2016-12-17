@@ -91,33 +91,44 @@ end
 
 %CALC AUC FOR THESE AVG LATENCIES
 reliability = lk_AUC_TI(reliability, cfg);
-%Region x wndw x trial x cond x sub x TI
+%Region x wndw x trial x cond x sub x TI - each trial may have different
+%latency window at different TI values
 
-%LUMP BY CONDITION
+
 clear reliability.ampauccond
-reliability.ampauccond = mean(reliability.ampauc(:,:,:,:,:,:,:),3)
-%SQUeeze this matrix in analyzis function so that like split matrix it has
-%only the thrid dimension analyzed!
-
-%LUMP BY SPLIT
-for isplit = 1:cfg.numsplit
-    splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-    reliability.ampaucsplit(:,:,isplit,:,:,:) = mean(reliability.ampauc(:,:,splitrange,:,:,:,:),3);
-end
-
-%LUMP BY ALTERNATING TRIALS (ODD V EVEN WHEN NUMSPLIT=2)
-for isplit = 1:cfg.numsplit
-    splitrange = (0:cfg.numsplit:cfg.trialnumber-cfg.numsplit)+isplit;
-    reliability.ampaucalt(:,:,isplit,:,:,:) = mean(reliability.ampauc(:,:,splitrange,:,:,:,:),3);
+for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
+    trialmax = iTI*cfg.trialincr;
+    
+    %LUMP BY CONDITION
+    reliability.ampauccond(:,:,:,:,:,iTI) = mean(reliability.ampauc(:,:,1:iTI*cfg.trialincr,:,:,iTI),3)
+    %regx wndw x 1split x cond x sub x iTI
+    
+    %SQUeeze this matrix in analyzis function so that like split matrix it has
+    %only the third dimension analyzed!
+    
+    %LUMP BY SPLIT
+    
+    for isplit = 1:cfg.numsplit
+        splitrange = ((isplit-1)*trialmax/cfg.numsplit)+1:isplit*trialmax/cfg.numsplit;
+        reliability.ampaucsplit(:,:,isplit,:,:,iTI) = mean(reliability.ampauc(:,:,splitrange,:,:,iTI),3);
+    end
+    
+    %LUMP BY ALTERNATING TRIALS (ODD V EVEN WHEN NUMSPLIT=2)
+    for isplit = 1:cfg.numsplit
+        altsplitrange = (0:cfg.numsplit:trialmax-cfg.numsplit)+isplit;
+        reliability.ampaucalt(:,:,isplit,:,:,iTI) = mean(reliability.ampauc(:,:,altsplitrange,:,:,iTI),3);
+    end
 end
 
 %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
-iTI =10;
+iTI =2;
 ireg =2;
 lk_waveformplot(reliability,cfg,iTI,ireg);
 
-ireg=2;
-lk_waveformplot_cammie(reliability,cfg,ireg);
+
+%MAy need to make sure I'm taking from the right trial for this one.
+% ireg=2;
+% lk_waveformplot_cammie(reliability,cfg,ireg);
 %NOTE: Code only looks at condition pre1!
 
 %NEXT: Squeeze, reshape, boostrap and analyze
