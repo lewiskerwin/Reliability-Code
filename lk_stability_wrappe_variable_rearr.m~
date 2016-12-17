@@ -101,17 +101,18 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     trialmax = iTI*cfg.trialincr;
     
     %LUMP BY CONDITION
-    reliability.ampauccond.data(:,:,:,:,:,iTI) = mean(reliability.ampauc(:,:,1:iTI*cfg.trialincr,:,:,iTI),3)
+    reliability.ampauccond(:,:,:,:,:,iTI) = mean(reliability.ampauc(:,:,1:iTI*cfg.trialincr,:,:,iTI),3)
     %regx wndw x 1split x cond x sub x iTI
     for ireg =1:cfg.regnumber
         for iwndw = 1:cfg.wndwnumber
-            statmat = squeeze(reliability.ampauccond.data(ireg,iwndw,:,:,:,iTI))';
-            [pearson, ttest, CCC, ICC, SDC] = lk_stats(statmat,cfg);
+            statmat = squeeze(reliability.ampauccond(ireg,iwndw,:,:,:,iTI))';
+            [pearson, ttest, CCC, ICC] = lk_stats(statmat,cfg);
             reliability.ampauccond.pearson(ireg,iwndw,iTI) = pearson;
-            reliability.ampauccond.ttest(ireg,iwndw,iTI) = ttest;
-            reliability.ampauccond.CCC(ireg,iwndw,iTI) = CCC;
-            reliability.ampauccond.ICC(ireg,iwndw,iTI) = ICC;
-            reliability.ampauccond.SDC(ireg,iwndw,iTI) = SDC;
+            %reliability.ampauccond.ttest(ireg,iwndw,iTI) = ttest;
+            %reliability.ampauccond.CCC(ireg,iwndw,iTI) = CCC;
+            %reliability.ampauccond.ICC(ireg,iwndw,iTI) = ICC;
+
+
             
         end
     end
