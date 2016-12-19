@@ -97,28 +97,70 @@ reliability = lk_AUC_TI(reliability, cfg);
 
 
 reliability.ampauccond = []
+cfg.bootnumber =10;
+cfg.itnumber= 100;
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     trialmax = iTI*cfg.trialincr;
     
-    %LUMP BY CONDITION
-    reliability.ampauccond(:,:,:,:,:,iTI) = mean(reliability.ampauc(:,:,1:iTI*cfg.trialincr,:,:,iTI),3)
-    %regx wndw x 1split x cond x sub x iTI
+    
+    %BOOTSTRAP (economize by only doing one reg winddw at time)
     for ireg =1:cfg.regnumber
-        for iwndw = 1:cfg.wndwnumber
-            statmat = squeeze(reliability.ampauccond(ireg,iwndw,:,:,:,iTI))';
-            [pearson, ttest, CCC, ICC] = lk_stats(statmat,cfg);
-            reliability.ampauccond.pearson(ireg,iwndw,iTI) = pearson;
-            %reliability.ampauccond.ttest(ireg,iwndw,iTI) = ttest;
-            %reliability.ampauccond.CCC(ireg,iwndw,iTI) = CCC;
-            %reliability.ampauccond.ICC(ireg,iwndw,iTI) = ICC;
+          for iwndw = 1:cfg.wndwnumber    
+              
+              %break AUC into boots
+              bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
+              for iboot= 1:cfg.bootnumber
+                  bootrange = (iboot-1)*cfg.bootlength+1:cfg.bootlength*iboot;
+                  prebootdata(iboot,:,:) = squeeze(mean(reliability.ampauc(ireg,iwndw,bootrange,:,:,iTI),3));
+              end
+              
+              clear pearson ttest CCC ICC SDC
+          
+              %ENTER ITERATION
+               rng(0,'twister');
+              bootsignature = randi([1 cfg.bootnumber],1,cfg.bootnumber,cfg.itnumber);
+              for iit=1:cfg.itnumber %100 itereations
+               
+                  statmat = squeeze(mean(prebootdata(bootsignature(:,iit),:,:),1))';
+                 [pearson(iit), ttest(iit), CCC(iit), ICC(iit), SDC(iit)] = lk_stats(statmat,cfg);
+          
+              end
+              reliability.ampauccond.pearson(ireg,iwndw,iTI) = mean(pearson);
+              reliability.ampauccond.pearsons(ireg,iwndw,iTI) = std(pearson);
+              reliability.ampauccond.ttest(ireg,iwndw,iTI) = mean(ttest);
+              reliability.ampauccond.ttests(ireg,iwndw,iTI) = std(ttest);
+              reliability.ampauccond.CCC(ireg,iwndw,iTI) = mean(CCC);
+              reliability.ampauccond.CCCs(ireg,iwndw,iTI) = std(CCC);
+              reliability.ampauccond.ICC(ireg,iwndw,iTI) = mean(ICC);
+              reliability.ampauccond.ICCs(ireg,iwndw,iTI) = std(ICC);
+              reliability.ampauccond.SDC(ireg,iwndw,iTI) = mean(SDC);
+              reliability.ampauccond.SDCs(ireg,iwndw,iTI) = std(SDC);
+              reliability.ampauccond.SDCp(ireg,iwndw,iTI) = reliability.ampauccond.SDC(ireg,iwndw,iTI)./mean(mean(mean(prebootdata)));
 
-
-            
-        end
+             
+          end
     end
     
-    %SQUeeze this matrix in analyzis function so that like split matrix it has
-    %only the third dimension analyzed!
+    %END OF BOOTSTRAPPING (the stuff below is commented out b/c
+    %bootstrapping does it already)
+%     
+%     %LUMP BY CONDITION
+%     reliability.ampauccond.data(:,:,:,:,:,iTI) = mean(reliability.ampauc(:,:,1:iTI*cfg.trialincr,:,:,iTI),3)
+%     
+%     %regx wndw x 1split x cond x sub x iTI
+%     for ireg =1:cfg.regnumber
+%         for iwndw = 1:cfg.wndwnumber
+%             statmat = squeeze(reliability.ampauccond.data(ireg,iwndw,:,:,:,iTI))';
+%             [pearson, ttest, CCC, ICC, SDC] = lk_stats(statmat,cfg);
+%             reliability.ampauccond.pearson(ireg,iwndw,iTI) = pearson;
+%             reliability.ampauccond.ttest(ireg,iwndw,iTI) = ttest;
+%             reliability.ampauccond.CCC(ireg,iwndw,iTI) = CCC;
+%             reliability.ampauccond.ICC(ireg,iwndw,iTI) = ICC;
+%             reliability.ampauccond.SDC(ireg,iwndw,iTI) = SDC;
+%             
+%         end
+%     end
+    
     
     %LUMP BY SPLIT
     
@@ -171,10 +213,10 @@ iccdim=3;%We only care about ICC between subjects
 for iwndw=1:size(cfg.peak.target,2)
    for ireg = 1:size(cfg.regs,2) 
         subplot(size(cfg.peak.target,2),2,(iwndw-1)*2+1)
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.ICC(:,iwndw,iccdim,:)));
+        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.ampauccond.ICC(:,iwndw,:)));
         legend(cfg.regs(:).name,'Location','southeast');
         TITLE = 'ICC between %ss at %s-ms peak \n as a function of trial number';
-        title(sprintf(TITLE,reliability.ICCdim{iccdim},cfg.peak.wndwnames{iwndw}));
+        %title(sprintf(TITLE,reliability.ICCdim{iccdim},cfg.peak.wndwnames{iwndw}));
          xlabel('Trial Number');
            end
 end
@@ -184,13 +226,13 @@ cccdim=2;
 for iwndw=1:size(cfg.peak.target,2)
    for ireg = 1:size(cfg.regs,2) 
         subplot(size(cfg.peak.target,2),2,iwndw*2)
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.finiteCCC(1,2,:,iwndw,cccdim,:)));
+        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.ampauccond.SDC(:,iwndw,:)));
         %Tried plotting percent SDC, wasn't pretty.
         %plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(mean(mean(mean(reliability.ampauc(:,iwndw,:,:,:,:),3),4),5)));
 
         legend(cfg.regs(:).name,'Location','northeast');
         TITLE = 'Concordance Correlation Coeffieicient In a Post-Intervention %s \n at %s-ms peak as a function of trial number';
-        title(sprintf(TITLE,reliability.ICCdim{cccdim},cfg.peak.wndwnames{iwndw}));
+        %title(sprintf(TITLE,reliability.ICCdim{cccdim},cfg.peak.wndwnames{iwndw}));
         xlabel('Trial Number'); ylabel('CCC');
    end
 end
