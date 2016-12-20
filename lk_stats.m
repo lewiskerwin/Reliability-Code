@@ -16,14 +16,14 @@ CCC = 2*variances(1,2)/(variances(1,1)+variances(2,2)+(mean(statmat(:,1))-mean(s
 
 %SS TOTAL
 grandmean = mean(mean(statmat));
-SST = sum(sum((statmat-grandmean).^2))
+SST = sum(sum((statmat-grandmean).^2));
 %SS BETWEEN SUBS
 submean = mean(statmat,2);
 SSB = sum((submean-grandmean).^2)*ndist;
 DOFB = nsub-1;
 MSB = SSB/DOFB;
 %SS WITHIN SUBS
-SSW = sum(sum((statmat-submean).^2 ))
+SSW = sum(sum((statmat-submean).^2 ));
 DOFW = nsub * (ndist-1);
 MSW = SSW/DOFW;
 %disp(sprintf('As QC SSB + SSW - SST should be zero and here is %d',SSB+SSW-SST));
@@ -32,11 +32,11 @@ MSW = SSW/DOFW;
 ICC = (MSB-MSW) / (MSB+(ndist-1)*MSW);
 
 %CALCULATE SDC - ASK MANJARI!?!
-VARB = (MSB-MSW)/(ndist) %Per Shrout 
-VARW = MSW
-VART = SST/(numel(statmat)-1) 
-VARresid = VART - (VARB + VARW) %Ug - I tried subtracting and have a negative number!!!
-VARresid = VART - (MSB - MSW) % and still negative when I try shrout's correction
+VARB = (MSB-MSW)/(ndist); %Per Shrout 
+VARW = MSW;
+VART = SST/(numel(statmat)-1);
+VARresid = VART - (VARB + VARW); %Ug - I tried subtracting and have a negative number!!!
+VARresid = VART - (MSB - MSW); % and still negative when I try shrout's correction
 SDC = (MSW)^.5 * 2^.5 * 1.96; % So This is the cop out... but might be correct. ask manjari?
 
 end

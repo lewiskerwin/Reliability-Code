@@ -69,14 +69,6 @@ for isub=1:size(data,1)
         reliability.amp(:,:,:,icond,isub) = data(isub,icond).EEG.data(:,cutinitialtime:size(data(isub,icond).EEG.data,2),1:cfg.trialnumber);
         %electrodes x time x trials x cond x sub
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
-        
-        
-%         tablerange = ((cnt-1)*cfg.trialnumber)+1:cnt*cfg.trialnumber;
-%         Table(tablerange,1) = (1:cfg.trialnumber)';
-%         Table(tablerange,2) = table(permute(reliability.amp(:,:,:,icond,isub),[3 1 2 4 5]));
-%         Table(tablerange,3) = cfg.file.subs(isub);
-%         Table(tablerange,4) = cfg.file.preconds(icond);
-%         cnt = cnt+1;
 
     end
 end
@@ -96,85 +88,20 @@ reliability = lk_AUC_TI(reliability, cfg);
 %latency window at different TI values
 
 
+%CALCULATE STATISTICS WITH BOOTSTRAPPING 
 reliability.ampauccond = []
-cfg.bootnumber =10;
-cfg.itnumber= 100;
-for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
-    trialmax = iTI*cfg.trialincr;
-    
-    
-    %BOOTSTRAP (economize by only doing one reg winddw at time)
-    for ireg =1:cfg.regnumber
-          for iwndw = 1:cfg.wndwnumber    
-              
-              %break AUC into boots
-              bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
-              for iboot= 1:cfg.bootnumber
-                  bootrange = (iboot-1)*cfg.bootlength+1:cfg.bootlength*iboot;
-                  prebootdata(iboot,:,:) = squeeze(mean(reliability.ampauc(ireg,iwndw,bootrange,:,:,iTI),3));
-              end
-              
-              clear pearson ttest CCC ICC SDC
-          
-              %ENTER ITERATION
-               rng(0,'twister');
-              bootsignature = randi([1 cfg.bootnumber],1,cfg.bootnumber,cfg.itnumber);
-              for iit=1:cfg.itnumber %100 itereations
-               
-                  statmat = squeeze(mean(prebootdata(bootsignature(:,iit),:,:),1))';
-                 [pearson(iit), ttest(iit), CCC(iit), ICC(iit), SDC(iit)] = lk_stats(statmat,cfg);
-          
-              end
-              reliability.ampauccond.pearson(ireg,iwndw,iTI) = mean(pearson);
-              reliability.ampauccond.pearsons(ireg,iwndw,iTI) = std(pearson);
-              reliability.ampauccond.ttest(ireg,iwndw,iTI) = mean(ttest);
-              reliability.ampauccond.ttests(ireg,iwndw,iTI) = std(ttest);
-              reliability.ampauccond.CCC(ireg,iwndw,iTI) = mean(CCC);
-              reliability.ampauccond.CCCs(ireg,iwndw,iTI) = std(CCC);
-              reliability.ampauccond.ICC(ireg,iwndw,iTI) = mean(ICC);
-              reliability.ampauccond.ICCs(ireg,iwndw,iTI) = std(ICC);
-              reliability.ampauccond.SDC(ireg,iwndw,iTI) = mean(SDC);
-              reliability.ampauccond.SDCs(ireg,iwndw,iTI) = std(SDC);
-              reliability.ampauccond.SDCp(ireg,iwndw,iTI) = reliability.ampauccond.SDC(ireg,iwndw,iTI)./mean(mean(mean(prebootdata)));
+cfg.bootnumber =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
+cfg.itnumber= 100; %Number of iterations
 
-             
-          end
-    end
-    
-    %END OF BOOTSTRAPPING (the stuff below is commented out b/c
-    %bootstrapping does it already)
-%     
-%     %LUMP BY CONDITION
-%     reliability.ampauccond.data(:,:,:,:,:,iTI) = mean(reliability.ampauc(:,:,1:iTI*cfg.trialincr,:,:,iTI),3)
-%     
-%     %regx wndw x 1split x cond x sub x iTI
-%     for ireg =1:cfg.regnumber
-%         for iwndw = 1:cfg.wndwnumber
-%             statmat = squeeze(reliability.ampauccond.data(ireg,iwndw,:,:,:,iTI))';
-%             [pearson, ttest, CCC, ICC, SDC] = lk_stats(statmat,cfg);
-%             reliability.ampauccond.pearson(ireg,iwndw,iTI) = pearson;
-%             reliability.ampauccond.ttest(ireg,iwndw,iTI) = ttest;
-%             reliability.ampauccond.CCC(ireg,iwndw,iTI) = CCC;
-%             reliability.ampauccond.ICC(ireg,iwndw,iTI) = ICC;
-%             reliability.ampauccond.SDC(ireg,iwndw,iTI) = SDC;
-%             
-%         end
-%     end
-    
-    
-    %LUMP BY SPLIT
-    
-    for isplit = 1:cfg.numsplit
-        splitrange = ((isplit-1)*trialmax/cfg.numsplit)+1:isplit*trialmax/cfg.numsplit;
-        reliability.ampaucsplit(:,:,isplit,:,:,iTI) = mean(reliability.ampauc(:,:,splitrange,:,:,iTI),3);
-    end
-    
-    %LUMP BY ALTERNATING TRIALS (ODD V EVEN WHEN NUMSPLIT=2)
-    for isplit = 1:cfg.numsplit
-        altsplitrange = (0:cfg.numsplit:trialmax-cfg.numsplit)+isplit;
-        reliability.ampaucalt(:,:,isplit,:,:,iTI) = mean(reliability.ampauc(:,:,altsplitrange,:,:,iTI),3);
-    end
-end
+comparison = 1; %Compare two conditions
+[reliability.ampauccond] = lk_bootstrap(reliability,cfg,comparison)
+
+comparison = 2; %Compare split half (requires numsplit to be 2 to catch all data)
+[reliability.ampaucsplit] = lk_bootstrap(reliability,cfg,comparison)
+
+comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catch all data)
+[reliability.ampaucalt] = lk_bootstrap(reliability,cfg,comparison)
+
 
 %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
 iTI =2;
