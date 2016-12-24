@@ -16,7 +16,7 @@ bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
             
         %PRE-BIN DATA FOR SPLIT HALF - rearranges all data to do split half
         case 2
-            clear prebinsplit
+            clear prebindata
             
             trialmax = iTI*cfg.trialincr;
             splitlength = trialmax/cfg.numsplit;
@@ -32,7 +32,7 @@ bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
             
         %PRE-BIN DATA FOR ALT BOOTSTRAPPING
         case 3
-            clear prebinalt
+            clear prebindata
             
             trialmax = iTI*cfg.trialincr;
             altsplitrange = (0:cfg.numsplit:trialmax-cfg.numsplit)+1;
@@ -59,7 +59,7 @@ bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
                 binneddata(iboot,:,:) = squeeze(mean(prebindata(ireg,iwndw,bootrange,:,:),3));
             end
             
-            clear pearson ttest CCC ICC SDC
+            clear pearson ttest CCC ICC SDC statmat
             
             %ENTER ITERATION
             rng(0,'twister');

@@ -1,6 +1,6 @@
 function data = lk_loaddata(cfg)
 % THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
-cd(cfg.DrivePathData);cd('matfiles/For_Lewis')%We're looking at Matfiles
+cd(cfg.DrivePathData);cd('matfiles')%We're looking at Matfiles
 clear data idx fNames  include 
 clear reliability
 tmp = dir('*.mat'); %tmp is a structure that contains all these names

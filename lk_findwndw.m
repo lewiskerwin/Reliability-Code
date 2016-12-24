@@ -4,10 +4,8 @@ clear lat amplat
 
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     
-    iTI
-    
     for ireg = 1:size(cfg.regs,2)
-        for isub = 1:size(cfg.file.subs,1)
+        for isub = 1:cfg.subnumber
             
             %These are the arrays of peak locations and peak amplitudes that are near each PEAK
             
