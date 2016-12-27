@@ -1,30 +1,29 @@
-function [stats] = lk_bootstrap(reliability,cfg,comparison)
+function [stats] = lk_bootstrap(reliability,cfg,feature,comparison)
 
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
 trialmax = iTI*cfg.trialincr;
 splitlength = trialmax/cfg.numsplit;
 bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
-
+featureddata = reliability.(cfg.featuretoplot{feature});
     
     switch comparison
         
         %PRE-BIN DATA FOR COND:
         case 1
             
-            prebindata = squeeze(reliability.ampauc(:,:,:,:,:,iTI));% This is the line that will differ cond vs split
+            prebindata = squeeze(featureddata(:,:,:,:,:,iTI));% This is the line that will differ cond vs split
             
             
         %PRE-BIN DATA FOR SPLIT HALF - rearranges all data to do split half
         case 2
             clear prebindata
-            
             trialmax = iTI*cfg.trialincr;
             splitlength = trialmax/cfg.numsplit;
             splitrange = 1:splitlength; % keep basic and update in loops below
             
             for icond = 1:cfg.condnumber
                 for isplit = 1:cfg.numsplit
-                    temp = squeeze(reliability.ampauc(:,:,splitrange+(splitlength*(isplit-1)),icond,:,iTI));
+                    temp = squeeze(featureddata(:,:,splitrange+(splitlength*(isplit-1)),icond,:,iTI));
                     prebindata(:,:,splitrange+(splitlength*(icond-1)),isplit,:) =temp;
                     %Now "condition" 1 has only 1st half and "condition" 2 has 2nd half
                 end
@@ -39,7 +38,7 @@ bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
             
             for icond = 1:cfg.condnumber
                 for isplit = 1:cfg.numsplit
-                    temp = squeeze(reliability.ampauc(:,:,(altsplitrange+isplit-1),icond,:,iTI));
+                    temp = squeeze(featureddata(:,:,(altsplitrange+isplit-1),icond,:,iTI));
                     prebindata(:,:,(altsplitrange+icond-1),isplit,:) =temp;
                     %Now "condition" 1 has only odds and "condition" 2 has only evens
                 end

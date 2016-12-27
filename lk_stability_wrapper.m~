@@ -5,20 +5,16 @@ close all
 [cfg] = spTMS_start();      % INITIALIZES ALL VALUES
 [cfg.stabilityresults] = uigetdir('','Pick Results folder in stability proj');
 
-whosedata= 'corey';
-
-
-cfg = rmfield(cfg,'file');
 cfg.file = [];
-switch whosedata
-    case 'corey'
+switch cfg.project{:}
+    case 'rTMS'
         %Corey Config
         cfg.file.subs = {'112';'113';'114'; '115';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include(1,:) = {'fromConcat_120'};
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
         
-    case 'cammie'
+    case 'vlpfc_TBS'
         %Cammie Config
         cfg.file.subs = {'105';'110'; '116';'118';'121';'122'}; cfg.file.preconds = {'right';'left'};%'final';'washout'};
         cfg.file.precondprefix = { '', ''};
@@ -40,8 +36,8 @@ end
         axisname{ireg} = cfg.regs(ireg).name;
  end
    
-cfg.peak.target = [30, 100, 200];
-cfg.peak.wiggle = [10, 30, 50]; %How far from target condition avg can be
+cfg.peak.target = [30, 60, 100, 200];
+cfg.peak.wiggle = [10, 15, 30, 50]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
 cfg.peak.width = 5;
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
@@ -49,6 +45,10 @@ cfg.wndwnumber = size(cfg.peak.target,2);
 
 cfg.numsplit= 2;
 cfg.trialincr = 10;
+
+%fieldnames(reliability); - can use this for higher versatility
+cfg.featuretoplot = {'ampauc', 'amplat'};
+cfg.comparisontoplot = {'cond', 'split', 'alt'};
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
 data = lk_loaddata(cfg);
@@ -84,78 +84,77 @@ end
 %[reliability] = lk_BLC(reliability,cfg);
 
 %FIND LATENCY OF INVDL TRIALS AND EACH SUB'S AVG
-[reliability.amplat, reliability.avgamplat] =   lk_findwndw(reliability,cfg);
+[reliability.amplat, reliability.avgamplat, reliability.ampauc, reliability.ampmax] = lk_findwndw(reliability,cfg);
 % Region x wndw x split x cond x sub x TI   
-% Reg x wndw x cond x sub x TI - average amplitude latency
+% Reg x wndw x cond x sub x TI - average amplitude latencys
 
-%CALC AUC FOR THESE AVG LATENCIES
-reliability = lk_AUC_TI(reliability, cfg);
+%CALC AUC FOR THESE AVG LATENCIES (NOW DONE IN CODE ABOVE)
+%reliability = lk_AUC_TI(reliability, cfg);
 %Region x wndw x trial x cond x sub x TI - each trial may have different
 %latency window at different TI values
 
 
 %CALCULATE AUC STATISTICS WITH BOOTSTRAPPING 
-reliability.ampauccond = []
 cfg.bootnumber =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
 
+feature= 2; %amp = 1 lat =2
+
 comparison = 1; %Compare two conditions
-[reliability.ampauccond] = lk_bootstrap(reliability,cfg,comparison)
+[reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
 
 comparison = 2; %Compare split half (requires numsplit to be 2 to catch all data)
-[reliability.ampaucsplit] = lk_bootstrap(reliability,cfg,comparison)
+[reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
 
 comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catch all data)
-[reliability.ampaucalt] = lk_bootstrap(reliability,cfg,comparison)
+[reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
 
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
 % iTI =2;
 % ireg =2;
-% lk_waveformplot(reliability,cfg,iTI,ireg);
+lk_waveformplot2(reliability,cfg,iTI,ireg);
 % 
 
 
 
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON CCC
-Date = datestr(today('datetime'))
-fname = [whosedata '_reliability_by_TI_' Date]
 figure('Position', [100, 100, 1450, 1200])
-width=3;
-Legend = 0;
 
 %DEFINE PARTS OF STRUCTURE TO PLOT
 %fieldnames(reliability); - can use this for higher versatility
-featuretoplot = {'ampauc', 'amplat'};
 comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
-comparisontoplot = {'cond', 'split', 'alt'};
-feature = 1; %Adjust here
-comparison=3; %and here
-fctoplot = [featuretoplot{feature} comparisontoplot{comparison}];
-
-
+feature = 2; %Adjust here
+comparison=1; %and here
+fctoplot = [cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}];
 stattoplot(:)= {'CCC','pearson','SDC'};
+statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Smallest Detectable Change'}'
+width=length(stattoplot);
+
+
 % %Below 3 lines unnecessary prob.
 % statnames = fieldnames(reliability.ampauccond);
 % for istat = 1:width
 % stattoplotidx(istat) = strmatch(stattoplot(istat), statnames, 'exact')
 % end
 
-
-
+Legend= 0;
+for istat = 1:width
+    
 comparisonlabeled =0;
 for iwndw=1:size(cfg.peak.target,2)
     for ireg = 1:size(cfg.regs,2)
         
-        subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+1)
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.(fctoplot).(stattoplot{1})(:,iwndw,:)) ),'-o');
+        subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
+        datatoplot = reliability.(fctoplot).(stattoplot{istat});
+        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(datatoplot(:,iwndw,:)),'-o');
        
     end
     
     %Add "odd vs even" only on top row of graphs
     if ~comparisonlabeled 
-        TITLE = 'Concordance Correlation Coefficient \n %s \n %s-ms peak';
-        title(sprintf(TITLE,comparisonlabel{comparison},cfg.peak.wndwnames{iwndw}));
+        TITLE = '%s \n %s \n %s-ms peak';
+        title(sprintf(TITLE,statlabel{istat},comparisonlabel{comparison},cfg.peak.wndwnames{iwndw}));
         comparisonlabeled=1;
     else
         TITLE = '%s-ms peak';
@@ -164,8 +163,12 @@ for iwndw=1:size(cfg.peak.target,2)
     end
    
     
-    xlabel('Trial Number'); ylabel('Concordance Correlation Coefficient');
-    axis( [0 cfg.trialnumber 0 1]);
+    xlabel('Trial Number'); %ylabel(statlabel{istat});
+    
+    if strcmp(stattoplot{istat}, 'SDC') axis( [0 cfg.trialnumber 0 200]);
+    else axis( [0 cfg.trialnumber 0 1]);
+    end
+    
     box off; grid on;
     if ~Legend
         legend(cfg.regs(:).name,'Location','northwest');
@@ -174,67 +177,15 @@ for iwndw=1:size(cfg.peak.target,2)
     else;end
     
 end
-%PLOT EFFECT OF INTREASING TRIAL NUMBER ON  Pearson
 
-comparisonlabeled=0;
-for iwndw=1:size(cfg.peak.target,2)
-    for ireg = 1:size(cfg.regs,2)
-        subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+2)
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.(fctoplot).(stattoplot{2}(:,iwndw,:))),'-o');
-    end
-   
-       %Add "odd vs even" only on top row of graphs
-    if ~comparisonlabeled 
-        TITLE = 'Pearson Coefficient \n %s \n %s-ms peak';
-        title(sprintf(TITLE,comparisonlabel{comparison},cfg.peak.wndwnames{iwndw}));
-        comparisonlabeled=1;
-    else
-        TITLE = '%s-ms peak';
-        title(sprintf(TITLE,cfg.peak.wndwnames{iwndw}));
-
-    end
-    
-        xlabel('Trial Number'); ylabel('Pearson Coefficient');
-        axis( [0 cfg.trialnumber 0 1]);
-        box off; legend boxoff; grid on;
-        
-       
 end
 
-%SDC
-comparisonlabeled=0;
-for iwndw=1:size(cfg.peak.target,2)
-    for ireg = 1:size(cfg.regs,2)
-        subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+3)
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(reliability.(fctoplot).(stattoplot{3}(:,iwndw,:))),'-o');
-        %Tried plotting percent SDC, wasn't pretty.
-        %plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(mean(mean(mean(reliability.ampauc(:,iwndw,:,:,:,:),3),4),5)));
-        
-        %legend(cfg.regs(:).name,'Location','northeast');
-        
-       
-    end
-    
-      %Add "odd vs even" only on top row of graphs
-   if ~comparisonlabeled 
-        TITLE = 'Smallest Detectable Change \n %s \n %s-ms peak';
-        title(sprintf(TITLE,comparisonlabel{comparison},cfg.peak.wndwnames{iwndw}));
-        comparisonlabeled=1;
-    else
-        TITLE = '%s-ms peak';
-        title(sprintf(TITLE,cfg.peak.wndwnames{iwndw}));
-
-    end
-    
-     xlabel('Trial Number'); ylabel('Smallest Detectable Change');
-        axis( [0 cfg.trialnumber 0 200]);
-        box off; legend boxoff;grid on;
-    
-end
-
+Date = datestr(today('datetime'));
+fname = [cfg.project{:} '_' fctoplot '_+60_' [stattoplot{:}] '_by_TI_' Date];
+cd = cfg.stabilityresults;
 ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%COREY STOPS HERE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%WRAPPER STOPS HERE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 %%
