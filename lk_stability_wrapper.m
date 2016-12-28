@@ -37,9 +37,9 @@ end
  end
    
 cfg.peak.target = [30, 60, 100, 200];
-cfg.peak.wiggle = [10, 15, 30, 50]; %How far from target condition avg can be
+cfg.peak.wiggle = [15, 15, 25, 50]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
-cfg.peak.width = 5;
+cfg.peak.width = [5, 5, 10, 15];
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
 cfg.wndwnumber = size(cfg.peak.target,2);
 
@@ -111,9 +111,10 @@ comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catc
 
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
-% iTI =2;
-% ireg =2;
-lk_waveformplot2(reliability,cfg,iTI,ireg);
+ iTI =5;
+ireg =3;
+isub=1;
+lk_waveformplot2(reliability,cfg,iTI,ireg,isub);
 % 
 
 
@@ -147,7 +148,7 @@ for iwndw=1:size(cfg.peak.target,2)
         
         subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
         datatoplot = reliability.(fctoplot).(stattoplot{istat});
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(datatoplot(:,iwndw,:)),'-o');
+        line = plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(datatoplot(:,iwndw,:)),'-o');
        
     end
     
@@ -168,17 +169,22 @@ for iwndw=1:size(cfg.peak.target,2)
     if strcmp(stattoplot{istat}, 'SDC') axis( [0 cfg.trialnumber 0 200]);
     else axis( [0 cfg.trialnumber 0 1]);
     end
-    
     box off; grid on;
-    if ~Legend
-        legend(cfg.regs(:).name,'Location','northwest');
-        Legend =1;
-        legend boxoff;
-    else;end
+
+    
     
 end
 
 end
+subplot(4,3,8);
+plotposa = get(gca,'Position');
+subplot(4,3,11);%go to middle bottom
+plotposb = get(gca,'Position');
+
+hL = legend(line,cfg.regs(:).name,'Orientation','horizontal','box','off');
+onebelow = plotposb(2)-(plotposa(2)-plotposb(2));
+legpos = [plotposb(1) onebelow+0.05 0.2 0.2];
+        set(hL,'Position', legpos,'box','off');
 
 Date = datestr(today('datetime'));
 fname = [cfg.project{:} '_' fctoplot '_' [stattoplot{:}] '_' Date];

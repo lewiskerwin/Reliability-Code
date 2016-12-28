@@ -1,10 +1,8 @@
-function lk_waveformplot(reliability,cfg,iTI,ireg)
+function lk_waveformplot(reliability,cfg,iTI,ireg,isub)
 
-isub = 1;
-icond =1;
-iTI=10;
+
 span=10;
-timerange = 0:250;
+timerange = 0:300;
 timeidx = find(reliability.times(:,1,1)==timerange(1)):find(reliability.times(:,1,1)==timerange(end));
 
 trialmax=iTI*10;
@@ -32,75 +30,93 @@ end
 figcnt=1;
 %PLOT TRIALS
 subplot(4,1,figcnt)
-plot(timerange,trialstoplot);
-title('Individual Trials');
+plot(timerange,trialstoplot(:,1:trialmax),'LineWidth',2);
+title('Load Individual Trials (for a given region of interest)');
 figcnt=figcnt+1;
+box off;
 
 %PLOT AVG (OF ALL TRIALS)
 trialavg = mean(trialstoplot,2);
 subplot(4,1,figcnt)
-plot (timerange, trialavg)
+plot (timerange, trialavg,'LineWidth',2)
 figcnt=figcnt+1;
-title('Average Waveform');
+title('Take the Average Waveform');
+box off;
 
 %SMOOTH AND ABS
 smoothed = smooth(abs(trialavg),5);
 subplot(4,1,figcnt)
-plot (timerange, smoothed);
-title('Smoothed and Rectified Average');
+plot (timerange, smoothed,'LineWidth',2);
+title('Smooth and Rectify Average to Find Peaks in Windows of Interest');
 hold on
 aucx = reliability.avgamplat(ireg,:,isub,iTI);
 aucidx = aucx +1 - reliability.times(1,icond,isub);
 
 plot ( aucx, smoothed(aucx),'o')
 hold off;
+box off;
 figcnt=figcnt+1;
 
 %ADD WINDOW LINES TO TRIALS
 subplot(4,1,figcnt)
-plot(timerange,trialstoplot(:,1:fewtrials));
-title('Integrate AUC for Each Trial (not all shown)');
+plot(timerange,trialstoplot(:,1:fewtrials),'LineWidth',2);
+title('Integrate Area Under Curve for Each Trial');
 
 hold on;
 for iwndw = 1:cfg.wndwnumber
-    peakrange =  avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width:avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width;
+    peakrange =  reliability.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):reliability.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
     yline=get(gca,'ylim');
-    plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0])
+    plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0]);
     for itrial = 1:fewtrials
         area(peakrange,trialstoplot(peakrange,itrial))
     end
 end
+box off;
 hold off;
 figcnt=figcnt+1;
 
+%FORMAT ALL 4 PLOTS
+set(findall(gca, 'Type', 'Plot'),'box','off');
 
-%ADD AUC TO AVG (OF ALL TRIALS)
-subplot(2,3,figcnt)
-plot (timerange, trialavg)
-hold on;
-plot(aucx,reliability.ampauc(1
-figcnt=figcnt+1;
 
-%OTHER
-subplot(3,2,figcnt)
-plot(reliability.times(500:750,icond,isub),trialstoplot);
-hold on
-plot(latencytoplot,AUCtoplot,'o');
-hold off
-%legend(isplit,'Location','southeast')
-figcnt= figcnt+1;
- TITLE = sprintf('Subject %d %s \n Circles indicate avg latency and AUC',isub,cfg.regs(ireg).name);
- title(TITLE);
-legend(legendnames,'Location','southeast');
+% 
+% %ADD AUC TO AVG (OF ALL TRIALS)
+% subplot(2,3,figcnt)
+% plot (timerange, trialavg)
+% hold on;
+% linemax= max(trialavg);
+% 
+% plot(aucx,mean(mean(reliability.ampauc(ireg,:,:,:,isub,iTI),3),4),'o');
+% hold off;
+% figcnt=figcnt+1;
+% 
+% %OTHER
+% subplot(3,2,figcnt)
+% plot(reliability.times(500:750,icond,isub),trialstoplot);
+% hold on
+% plot(latencytoplot,AUCtoplot,'o');
+% hold off
+% %legend(isplit,'Location','southeast')
+% figcnt= figcnt+1;
+%  TITLE = sprintf('Subject %d %s \n Circles indicate avg latency and AUC',isub,cfg.regs(ireg).name);
+%  title(TITLE);
+% legend(legendnames,'Location','southeast');
 
 
 
 %APPLY COREY'S FUNCTION
-TITLE = sprintf('Waveforms of Split Halves \n with Avg Latency and AUC');
-matfilerange = [cfg.file.subs{1},'-',cfg.file.subs{cfg.subnumber}];
-regionname = cfg.regs(ireg).name;
-filename = strrep(sprintf('%s_Waveform_AUC_Latency_%s',matfilerange,regionname),' ','_');
-cd(cfg.stabilityresults);
-ck_save_figure(filename,10,10,1,TITLE,1)
+
+Date = datestr(today('datetime'));
+fname = [cfg.project{:} '_Wave_Reg' num2str(ireg) 'Sub' num2str(isub) 'TI' num2str(iTI) '_' Date];
+cd = cfg.stabilityresults;
+ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
+
+
+% TITLE = sprintf('Waveforms of Split Halves \n with Avg Latency and AUC');
+% matfilerange = [cfg.file.subs{1},'-',cfg.file.subs{cfg.subnumber}];
+% regionname = cfg.regs(ireg).name;
+% filename = strrep(sprintf('%s_Waveform_AUC_Latency_%s',matfilerange,regionname),' ','_');
+% cd(cfg.stabilityresults);
+% ck_save_figure(filename,10,10,1,TITLE,1)
 
 end

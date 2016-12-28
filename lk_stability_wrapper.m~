@@ -127,8 +127,8 @@ comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
 feature = 2; %Adjust here
 comparison=1; %and here
 fctoplot = [cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}];
-stattoplot(:)= {'CCC','pearson','SDC'};
-statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Smallest Detectable Change'}'
+stattoplot(:)= {'CCC','pearson','ICC'};
+statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
 width=length(stattoplot);
 
 
@@ -147,7 +147,7 @@ for iwndw=1:size(cfg.peak.target,2)
         
         subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
         datatoplot = reliability.(fctoplot).(stattoplot{istat});
-        plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(datatoplot(:,iwndw,:)),'-o');
+        line = plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(datatoplot(:,iwndw,:)),'-o');
        
     end
     
@@ -168,20 +168,26 @@ for iwndw=1:size(cfg.peak.target,2)
     if strcmp(stattoplot{istat}, 'SDC') axis( [0 cfg.trialnumber 0 200]);
     else axis( [0 cfg.trialnumber 0 1]);
     end
-    
     box off; grid on;
-    if ~Legend
-        legend(cfg.regs(:).name,'Location','northwest');
-        Legend =1;
-        legend boxoff;
-    else;end
+
+    
     
 end
 
 end
+subplot(4,3,8);
+plotposa = get(gca,'Position');
+subplot(4,3,11);%go to middle bottom
+plotposb = get(gca,'Position');
+
+hL = legend(line,cfg.regs(:).name,'Orientation','horizontal','box','off');
+onebelow = plotposb(2)-(plotposa(2)-plotposb(2));
+legpos = [plotposb(1) onebelow 0.2 0.2];
+        set(hL,'Position', legpos,'box','off');
+       hL= legend('boxoff');
 
 Date = datestr(today('datetime'));
-fname = [cfg.project{:} '_' fctoplot '_+60_' [stattoplot{:}] '_by_TI_' Date];
+fname = [cfg.project{:} '_' fctoplot '_' [stattoplot{:}] '_' Date];
 cd = cfg.stabilityresults;
 ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
 

@@ -36,7 +36,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 avgamplat(ireg,iwndw,isub,iTI) = bestloc-1 + (cfg.peak.target(iwndw)-cfg.peak.wiggle(iwndw));
                 avgampidx(ireg,iwndw,isub,iTI) = bestloc-1 +  targettimeidx(1); %Add rank (in target range) to location of target-range
                 %translate latency back into the full data spectrum
-                peakrangeidx = avgampidx(ireg,iwndw,isub,iTI) - cfg.peak.width:  avgampidx(ireg,iwndw,isub,iTI) + cfg.peak.width;
+                peakrangeidx = avgampidx(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):  avgampidx(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
                 peakrangelat = alltimes(peakrangeidx);
                 
                 %FOR EACH TRIAL...
