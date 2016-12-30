@@ -36,8 +36,8 @@ end
         axisname{ireg} = cfg.regs(ireg).name;
  end
    
-cfg.peak.target = [30, 60, 100, 200];
-cfg.peak.wiggle = [15, 15, 25, 50]; %How far from target condition avg can be
+cfg.peak.target = [30, 60, 110, 200];
+cfg.peak.wiggle = [15, 15, 35, 55]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
 cfg.peak.width = [5, 5, 10, 15];
 cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
@@ -88,6 +88,28 @@ end
 % Region x wndw x split x cond x sub x TI   
 % Reg x wndw x cond x sub x TI - average amplitude latencys
 
+%%
+%QC to ensure integral of avg = avg of integral
+ireg=1; iwndw=2; iTI=8;
+for isub = 1:cfg.subnumber
+    for icond = 1:cfg.condnumber
+        %First avg of integral
+        AofI(icond,isub) = mean(reliability.ampauc(ireg,iwndw,:,icond,isub,iTI),3);
+        % conds x subs
+        
+        %now integral of avg
+        AofA(:,icond,isub) = mean(mean(reliability.amp(cfg.regs(ireg).chan,:,:,icond,isub),1),3);
+        %time x conds x subs
+        alltimes = reliability.times(:,icond,isub);
+        targetidx = find(alltimes == reliability.avgamplat(ireg,iwndw,isub,iTI));
+        peakrangeidx = targetidx - cfg.peak.width(iwndw) : targetidx + cfg.peak.width(iwndw);
+        IofA(icond,isub) = trapz(peakrangeidx,AofA(peakrangeidx,icond,isub));
+        %conds x subs
+    end
+end
+
+%%
+
 %CALC AUC FOR THESE AVG LATENCIES (NOW DONE IN CODE ABOVE)
 %reliability = lk_AUC_TI(reliability, cfg);
 %Region x wndw x trial x cond x sub x TI - each trial may have different
@@ -98,7 +120,7 @@ end
 cfg.bootnumber =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
 
-feature= 2; %amp = 1 lat =2
+feature= 1; %amp = 1 lat =2
 
 comparison = 1; %Compare two conditions
 [reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
@@ -111,11 +133,11 @@ comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catc
 
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
- iTI =5;
+ iTI =6;
 ireg =3;
-isub=1;
+isub=2;
 lk_waveformplot2(reliability,cfg,iTI,ireg,isub);
-% 
+
 
 
 
@@ -125,11 +147,12 @@ figure('Position', [100, 100, 1450, 1200])
 %DEFINE PARTS OF STRUCTURE TO PLOT
 %fieldnames(reliability); - can use this for higher versatility
 comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
-feature = 2; %Adjust here
+feature = 1; %Adjust here
 comparison=1; %and here
 fctoplot = [cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}];
 stattoplot(:)= {'CCC','pearson','ICC'};
 statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
+featurelabel(:) = {'Area Under Curve', 'Peak Latency'};
 width=length(stattoplot);
 
 
@@ -139,24 +162,40 @@ width=length(stattoplot);
 % stattoplotidx(istat) = strmatch(stattoplot(istat), statnames, 'exact')
 % end
 
+colorstring = 'ymcrgb';
 Legend= 0;
+timetoplot = (cfg.trialincr:cfg.trialincr:cfg.trialnumber)';
+
+
 for istat = 1:width
     
 comparisonlabeled =0;
+datatoplot_allreg = reliability.(fctoplot).(stattoplot{istat});
+errortoplot_allreg = reliability.(fctoplot).([stattoplot{istat} 's']);
+
 for iwndw=1:size(cfg.peak.target,2)
-    for ireg = 1:size(cfg.regs,2)
-        
-        subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
-        datatoplot = reliability.(fctoplot).(stattoplot{istat});
-        line = plot(cfg.trialincr:cfg.trialincr:cfg.trialnumber,squeeze(datatoplot(:,iwndw,:)),'-o');
-       
+    subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
+    
+    hold on
+    for ireg = 1:cfg.regnumber
+        datatoplot = squeeze(datatoplot_allreg(ireg,iwndw,:));
+        errortoplot = squeeze(errortoplot_allreg(ireg,iwndw,:));
+        %line = plot(timetoplot,datatoplot,'-o');
+        %ALTERNATIVE LINE IF WE WANNA SEE ERROR
+        line(ireg) = shadedErrorBar(timetoplot,datatoplot,errortoplot,{['-o' colorstring(ireg)],'markerfacecolor',colorstring(ireg)},1);
     end
+    hold off
     
     %Add "odd vs even" only on top row of graphs
-    if ~comparisonlabeled 
-        TITLE = '%s \n %s \n %s-ms peak';
-        title(sprintf(TITLE,statlabel{istat},comparisonlabel{comparison},cfg.peak.wndwnames{iwndw}));
-        comparisonlabeled=1;
+    if iwndw==1
+        %Top middle gets special AUC vs LAT
+        if istat == (floor(width/2)+1)
+            TITLE = '%s in %s \n %s \n %s-ms peak';
+            title(sprintf(TITLE,featurelabel{feature},comparisonlabel{comparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
+        else
+            TITLE = '%s \n %s-ms peak';
+            title(sprintf(TITLE,statlabel{istat},cfg.peak.wndwnames{iwndw}));
+        end
     else
         TITLE = '%s-ms peak';
         title(sprintf(TITLE,cfg.peak.wndwnames{iwndw}));
@@ -180,8 +219,7 @@ subplot(4,3,8);
 plotposa = get(gca,'Position');
 subplot(4,3,11);%go to middle bottom
 plotposb = get(gca,'Position');
-
-hL = legend(line,cfg.regs(:).name,'Orientation','horizontal','box','off');
+hL = legend([line.mainLine],cfg.regs(:).name,'Orientation','horizontal','box','off');
 onebelow = plotposb(2)-(plotposa(2)-plotposb(2));
 legpos = [plotposb(1) onebelow+0.05 0.2 0.2];
         set(hL,'Position', legpos,'box','off');

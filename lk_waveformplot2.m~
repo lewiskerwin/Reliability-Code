@@ -90,9 +90,9 @@ for iwndw = 1:cfg.wndwnumber
     plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0]);
     
     
-    %for itrial = 1:fewtrials
-        aucx = reliability.amplat(ireg,iwndw,1:cfg.fewtrials,:,isub,iTI);
-    %end
+    for itrial = 1:fewtrials
+        aucx = reliability.amplat(ireg,iwndw,itrial:,isub,iTI);
+    end
 end
 box off;xlabel('ms'); ylabel('uV');
 hold off;
