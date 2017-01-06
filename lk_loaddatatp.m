@@ -1,13 +1,11 @@
-function [data, cfg] = lk_loaddata(cfg)
+function [data, cfg] = lk_loaddatatp(cfg)
 % THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
-cd(cfg.DrivePathData);cd('matfiles')%We're looking at Matfiles
+cd(cfg.DrivePathData); cd('matfiles');%We're looking at Matfiles
 clear data idx fNames  include 
-clear reliability
 tmp = dir('*.mat'); %tmp is a structure that contains all these names
 fNames = cell(size(tmp,1),1); %fNames is an array of cells of same size as tmp
 cnt = 1;%counts number of mat files loaded. Unsure if necessary
 cfg.trialnumber =150;
-
 
 for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     fNames{i,1} = tmp(i).name(1:end-4);%Adds file to list of names (w/o '.mat')
@@ -32,6 +30,18 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
         end
     end
     if ~idx(i),continue,end
+    
+    %%
+%     %Make sure file contains one of the desired timepoints
+%     for itp = 1:length(cfg.file.tp)% Go through each relevant subject
+%         if ~isempty(strfind(fNames{i,1},cfg.file.tp{itp}))
+%             idx(i) =1;
+%             break
+%         else idx(i) = 0;
+%         end
+%     end
+%     if ~idx(i),continue,end
+itp=1; %DELET THIS AFTER UNCOMMENTING THE ABOVE
     
     %%
     %Make sure file contains one of the desired subs
@@ -60,23 +70,22 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
 
     %%
     %Actually load data if we've made it this far
-    data(isub,icond) = load(fNames{i,1});%Load data
-    data(isub,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
-    data(isub,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
-    data(isub,icond).EEG.subject = cfg.file.subs{isub};%save sub name
-    data(isub,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
-    disp(['Loading matfile for sub ' cfg.file.subs{isub} ' condition ' cfg.file.preconds{icond}  '...']);
+    data(isub,itp,icond) = load(fNames{i,1});%Load data
+    data(isub,itp,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
+    data(isub,itp,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
+    data(isub,itp,icond).EEG.subject = cfg.file.subs{isub};%save sub name
+    data(isub,itp,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
+    disp(['Loading matfile for sub ' cfg.file.subs{isub} ' timepoint ' num2str(itp) ' condition ' cfg.file.preconds{icond}  '...']);
     %Now Load and label each data file...
-    data(isub,icond).EEG.baseline_variance=nanmean(nanmean(var(data(isub,icond).EEG.data,1)));
+    data(isub,itp,icond).EEG.baseline_variance=nanmean(nanmean(var(data(isub,itp,icond).EEG.data,1)));
+    cnt = cnt + 1;
     
     if cfg.trialnumber > size(data(isub,icond).EEG.data,3)
     cfg.trialnumber = size(data(isub,icond).EEG.data,3);
-    
-    cnt = cnt + 1;
-    
 
 end
 idx = find(idx);
-cfg.condnumber= size(data,2);
+cfg.condnumber= size(data,3);
 cfg.subnumber= size(data,1);
+cfg.tpnumber= size(data,2);
 end

@@ -1,11 +1,9 @@
 function [stats] = lk_bootstrap(reliability,cfg,feature,comparison)
 
-rng(0,'twister');
-
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
 trialmax = iTI*cfg.trialincr;
 splitlength = trialmax/cfg.numsplit;
-bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
+bootnumber = floor(trialmax/cfg.bootlength);%Depends on iTI
 featureddata = reliability.(cfg.featuretoplot{feature});
     
     switch comparison
@@ -13,7 +11,7 @@ featureddata = reliability.(cfg.featuretoplot{feature});
         %PRE-BIN DATA FOR COND:
         case 1
             
-            prebindata = squeeze(featureddata(:,:,:,:,:,iTI));% This is the line that will differ cond vs split
+            prebindata = squeeze(featureddata(:,:,1:trialmax,:,:,iTI));% This is the line that will differ cond vs split
             
             
         %PRE-BIN DATA FOR SPLIT HALF - rearranges all data to do split half
@@ -49,15 +47,12 @@ featureddata = reliability.(cfg.featuretoplot{feature});
     end
     
     %BOOTSTRAP (economize by only doing one reg winddw at time)
-               
-            bootsignature = randi([1 cfg.bootnumber],1,cfg.bootnumber,cfg.itnumber);
-    
-   for ireg =1:cfg.regnumber
+    for ireg =1:cfg.regnumber
         for iwndw = 1:cfg.wndwnumber
             
             %break AUC into boots
-            for iboot= 1:cfg.bootnumber
-                bootrange = (iboot-1)*bootlength+1:bootlength*iboot; %Ten blocks of trials per condition
+            for iboot= 1:bootnumber
+                bootrange = (iboot-1)*cfg.bootlength+1:cfg.bootlength*iboot; %Ten blocks of trials per condition
                 %Or for splits, this will be ten blocks of trials in each
                 %split! So bootrange is the same, but for different splits I'll have to rearrange input table
                 binneddata(iboot,:,:) = squeeze(mean(prebindata(ireg,iwndw,bootrange,:,:),3));
@@ -66,6 +61,8 @@ featureddata = reliability.(cfg.featuretoplot{feature});
             clear pearson ttest CCC ICC SDC statmat
             
             %ENTER ITERATION
+            rng(0,'twister');
+            bootsignature = randi([1 cfg.bootnumber],1,cfg.bootnumber,cfg.itnumber);
             for iit=1:cfg.itnumber %100 itereations
                 
                 statmat = squeeze(mean(binneddata(bootsignature(:,iit),:,:),1))';

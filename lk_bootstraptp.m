@@ -1,6 +1,4 @@
-function [stats] = lk_bootstrap(reliability,cfg,feature,comparison)
-
-rng(0,'twister');
+function [stats] = lk_bootstraptp(reliability,cfg,feature,comparison)
 
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
 trialmax = iTI*cfg.trialincr;
@@ -49,10 +47,7 @@ featureddata = reliability.(cfg.featuretoplot{feature});
     end
     
     %BOOTSTRAP (economize by only doing one reg winddw at time)
-               
-            bootsignature = randi([1 cfg.bootnumber],1,cfg.bootnumber,cfg.itnumber);
-    
-   for ireg =1:cfg.regnumber
+    for ireg =1:cfg.regnumber
         for iwndw = 1:cfg.wndwnumber
             
             %break AUC into boots
@@ -66,6 +61,8 @@ featureddata = reliability.(cfg.featuretoplot{feature});
             clear pearson ttest CCC ICC SDC statmat
             
             %ENTER ITERATION
+            rng(0,'twister');
+            bootsignature = randi([1 cfg.bootnumber],1,cfg.bootnumber,cfg.itnumber);
             for iit=1:cfg.itnumber %100 itereations
                 
                 statmat = squeeze(mean(binneddata(bootsignature(:,iit),:,:),1))';

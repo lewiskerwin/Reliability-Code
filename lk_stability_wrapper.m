@@ -6,13 +6,14 @@ close all
 [cfg.stabilityresults] = uigetdir('','Pick Results folder in stability proj');
 
 cfg.file = [];
-switch cfg.project{:}
+switch cfg.ProjectName
     case 'rTMS'
         %Corey Config
         cfg.file.subs = {'112';'113';'114'; '115';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include(1,:) = {'fromConcat_120'};
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
+        cfg.file.tp = {'tp1';'tp2'};
         
     case 'vlpfc_TBS'
         %Cammie Config
@@ -51,19 +52,7 @@ cfg.featuretoplot = {'ampauc', 'amplat'};
 cfg.comparisontoplot = {'cond', 'split', 'alt'};
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
-data = lk_loaddata(cfg);
-
-%FIND COMMON DENOMENATOR OF TRIALS, CONDS, SUBS
-cfg.trialnumber =150;
-for isub=1:size(data,1)
-    for icond=1:size(data,2)
-        if cfg.trialnumber > size(data(isub,icond).EEG.data,3)
-            cfg.trialnumber = size(data(isub,icond).EEG.data,3);
-        else; end      
-    end
-end
-cfg.condnumber= size(data,2);
-cfg.subnumber= size(data,1);
+[data, cfg] = lk_loaddata(cfg); % Need to make cd() work better
 
 
 %%
@@ -80,6 +69,9 @@ for isub=1:size(data,1)
     end
 end
 
+
+
+
 %BASELINE CORRECT PER COREY'S REC (significantly altars some conditions and not others, SDC lower without this)
 %[reliability] = lk_BLC(reliability,cfg);
 
@@ -87,6 +79,22 @@ end
 [reliability.amplat, reliability.avgamplat, reliability.ampauc, reliability.ampmax] = lk_findwndw(reliability,cfg);
 % Region x wndw x split x cond x sub x TI   
 % Reg x wndw x cond x sub x TI - average amplitude latencys
+
+%ALT CODE FOR MULTIPLE TIMEPOINTS
+clear reliability
+cnt=1;
+cutinitialtime=1;
+for isub=1:cfg.subnumber
+    for itp =1:cfg.tpnumber
+        for icond=1:cfg.condnumber
+            reliability.amp(:,:,:,icond,itp,isub) = data(isub,itp,icond).EEG.data(:,cutinitialtime:size(data(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
+            %electrodes x time x trials x cond x sub
+            reliability.times(:,icond,itp,isub) = data(isub,itp,icond).EEG.times(cutinitialtime:size(data(isub,itp,icond).EEG.data,2));
+        end
+    end
+end
+
+[reliability.amplat, reliability.avgamplat, reliability.ampauc, reliability.ampmax] = lk_findwndwtp(reliability,cfg);
 
 %%
 %QC to ensure integral of avg = avg of integral
@@ -117,23 +125,25 @@ end
 
 
 %CALCULATE AUC STATISTICS WITH BOOTSTRAPPING 
-cfg.bootnumber =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
+cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
 
-feature= 1; %amp = 1 lat =2
-
-comparison = 1; %Compare two conditions
-[reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
-
-comparison = 2; %Compare split half (requires numsplit to be 2 to catch all data)
-[reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
-
-comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catch all data)
-[reliability.([cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}])] = lk_bootstrap(reliability,cfg,feature,comparison);
-
+for ifeature = 1:size(cfg.featuretoplot,2) %amp = 1 lat =2
+    
+    comparison = 1; %Compare two conditions
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    
+    comparison = 2; %Compare split half (requires numsplit to be 2 to catch all data)
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    
+    comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catch all data)
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    
+end
+%comparison = 4; - FOR TP1 VS TP2
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
- iTI =6;
+iTI =6;
 ireg =3;
 isub=2;
 lk_waveformplot2(reliability,cfg,iTI,ireg,isub);
@@ -154,13 +164,6 @@ stattoplot(:)= {'CCC','pearson','ICC'};
 statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
 featurelabel(:) = {'Area Under Curve', 'Peak Latency'};
 width=length(stattoplot);
-
-
-% %Below 3 lines unnecessary prob.
-% statnames = fieldnames(reliability.ampauccond);
-% for istat = 1:width
-% stattoplotidx(istat) = strmatch(stattoplot(istat), statnames, 'exact')
-% end
 
 colorstring = 'ymcrgb';
 Legend= 0;
@@ -225,8 +228,8 @@ legpos = [plotposb(1) onebelow+0.05 0.2 0.2];
         set(hL,'Position', legpos,'box','off');
 
 Date = datestr(today('datetime'));
-fname = [cfg.project{:} '_' fctoplot '_' [stattoplot{:}] '_' Date];
-cd = cfg.stabilityresults;
+fname = [cfg.ProjectName '_' fctoplot '_' [stattoplot{:}] '_' Date];
+cd(cfg.stabilityresults);
 ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%WRAPPER STOPS HERE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

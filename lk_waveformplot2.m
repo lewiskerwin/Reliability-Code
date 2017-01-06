@@ -28,6 +28,7 @@ for itrial=1:trialmax
    cnt=cnt+1;
 end
 end
+
 figcnt=1;
 %PLOT TRIALS
 subplot(4,1,figcnt)
@@ -78,25 +79,25 @@ hold off;
 figcnt=figcnt+1;
 
 
-%ADD WINDOW LINES TO TRIALS AND FIND LATENCIES!
-subplot(4,1,figcnt)
-plot(timerange,trialstoplot(:,1:fewtrials),'LineWidth',2);
-title('Integrate Area Under Curve for Each Trial');
-
-hold on;
-for iwndw = 1:cfg.wndwnumber
-    peakrange =  reliability.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):reliability.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
-    yline=get(gca,'ylim');
-    plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0]);
-    
-    
-    %for itrial = 1:fewtrials
-        aucx = reliability.amplat(ireg,iwndw,1:cfg.fewtrials,:,isub,iTI);
-    %end
-end
-box off;xlabel('ms'); ylabel('uV');
-hold off;
-figcnt=figcnt+1;
+% %ADD WINDOW LINES TO TRIALS AND FIND LATENCIES!
+% subplot(4,1,figcnt)
+% plot(timerange,trialstoplot(:,1:fewtrials),'LineWidth',2);
+% title('Integrate Area Under Curve for Each Trial');
+% 
+% hold on;
+% for iwndw = 1:cfg.wndwnumber
+%     peakrange =  reliability.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):reliability.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
+%     yline=get(gca,'ylim');
+%     plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0]);
+%     
+%     
+%     %for itrial = 1:fewtrials
+%         aucx = reliability.amplat(ireg,iwndw,1:cfg.fewtrials,:,isub,iTI);
+%     %end
+% end
+% box off;xlabel('ms'); ylabel('uV');
+% hold off;
+% figcnt=figcnt+1;
 
 
 % 
@@ -127,8 +128,8 @@ figcnt=figcnt+1;
 %APPLY COREY'S FUNCTION
 
 Date = datestr(today('datetime'));
-fname = [cfg.project{:} '_Wave_Reg' num2str(ireg) 'Sub' num2str(isub) 'TI' num2str(iTI) '_' Date];
-cd = cfg.stabilityresults;
+fname = [cfg.ProjectName '_Wave_Reg' num2str(ireg) 'Sub' num2str(isub) 'TI' num2str(iTI) '_' Date];
+cd(cfg.stabilityresults);
 ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
 
 
