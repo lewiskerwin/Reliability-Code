@@ -36,7 +36,7 @@ end
  for ireg=1:length(cfg.regs)
         axisname{ireg} = cfg.regs(ireg).name;
  end
-   
+  
 cfg.peak.target = [30, 60, 110, 200];
 cfg.peak.wiggle = [15, 15, 35, 55]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
@@ -48,7 +48,7 @@ cfg.numsplit= 2;
 cfg.trialincr = 10;
 
 %fieldnames(reliability); - can use this for higher versatility
-cfg.featuretoplot = {'ampauc', 'amplat'};
+cfg.featuretoplot = {'amplat', 'amp};
 cfg.comparisontoplot = {'cond', 'split', 'alt'};
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
@@ -68,6 +68,8 @@ for isub=1:size(data,1)
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
     end
 end
+cfg.alltimes = reliability.times(:,1,1); 
+
 
 
 
@@ -129,16 +131,11 @@ cfg.bootlength =10; %Number of bins ("boots") that each data point will be divid
 cfg.itnumber= 100; %Number of iterations
 
 for ifeature = 1:size(cfg.featuretoplot,2) %amp = 1 lat =2
-    for icomparison =1:size(cfg.comparisontoplot
-    comparison = 1; %Compare two conditions
-    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    for icomparison =1:size(cfg.comparisontoplot,2)
     
-    comparison = 2; %Compare split half (requires numsplit to be 2 to catch all data)
-    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{icomparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
     
-    comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catch all data)
-    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
-    
+    end
 end
 %comparison = 4; - FOR TP1 VS TP2
 

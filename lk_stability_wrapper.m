@@ -36,7 +36,7 @@ end
  for ireg=1:length(cfg.regs)
         axisname{ireg} = cfg.regs(ireg).name;
  end
-   
+  
 cfg.peak.target = [30, 60, 110, 200];
 cfg.peak.wiggle = [15, 15, 35, 55]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
@@ -48,7 +48,8 @@ cfg.numsplit= 2;
 cfg.trialincr = 10;
 
 %fieldnames(reliability); - can use this for higher versatility
-cfg.featuretoplot = {'ampauc', 'amplat'};
+cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
+cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
 cfg.comparisontoplot = {'cond', 'split', 'alt'};
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
@@ -68,6 +69,8 @@ for isub=1:size(data,1)
         reliability.times(:,icond,isub) = data(isub,icond).EEG.times(cutinitialtime:size(data(isub,icond).EEG.data,2));
     end
 end
+cfg.alltimes = reliability.times(:,1,1); 
+
 
 
 
@@ -128,10 +131,10 @@ end
 cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
 
-for ifeature = 1:size(cfg.featuretoplot,2) %amp = 1 lat =2
+for ifeature = 1:size(cfg.feature,2) %amp = 1 lat =2
     for icomparison =1:size(cfg.comparisontoplot,2)
     
-    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{icomparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    [reliability.([cfg.feature{ifeature} cfg.comparisontoplot{icomparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
     
     end
 end
@@ -154,7 +157,7 @@ figure('Position', [100, 100, 1450, 1200])
 comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
 feature = 1; %Adjust here
 comparison=1; %and here
-fctoplot = [cfg.featuretoplot{feature} cfg.comparisontoplot{comparison}];
+fctoplot = [cfg.feature{feature} cfg.comparisontoplot{comparison}];
 stattoplot(:)= {'CCC','pearson','ICC'};
 statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
 featurelabel(:) = {'Area Under Curve', 'Peak Latency'};
