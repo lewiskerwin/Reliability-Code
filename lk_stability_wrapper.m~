@@ -129,11 +129,16 @@ cfg.bootlength =10; %Number of bins ("boots") that each data point will be divid
 cfg.itnumber= 100; %Number of iterations
 
 for ifeature = 1:size(cfg.featuretoplot,2) %amp = 1 lat =2
-    for icomparison =1:size(cfg.comparisontoplot,2)
+    for icomparison =1:size(cfg.comparisontoplot
+    comparison = 1; %Compare two conditions
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
     
-    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{icomparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    comparison = 2; %Compare split half (requires numsplit to be 2 to catch all data)
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
     
-    end
+    comparison = 3; %Compares odds vs even trials (requires numsplit to be 2 to catch all data)
+    [reliability.([cfg.featuretoplot{ifeature} cfg.comparisontoplot{comparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
+    
 end
 %comparison = 4; - FOR TP1 VS TP2
 
