@@ -6,11 +6,10 @@ rng(0,'twister');
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr) 
 trialmax = iTI*cfg.trialincr; %number of trials we're looking at here
 splitlength = trialmax/cfg.numsplit; %numsplit is set to 2 for code to work
-
 cfg.bootnumber= iTI; %Have exactly one boot per ten trials (i.e per one block)
 cfg.sampleperboot = cfg.trialincr/2; % For each boot, take 50% 
 cfg.itnumber=100; %100 interations
-bootlength = cfg.trialincr; %Always 10 with half-sampling
+bootlength = floor(trialmax/cfg.bootnumber);%Depends on iTI
 featureddata = reliability.(cfg.featuretoplot{feature});
     
     switch comparison
