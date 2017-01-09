@@ -50,7 +50,7 @@ cfg.trialincr = 10;
 %fieldnames(reliability); - can use this for higher versatility
 cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
 cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
-cfg.comparisontoplot = {'cond', 'split', 'alt'};
+cfg.comparison = {'cond', 'split', 'alt'};
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
 [data, cfg] = lk_loaddata(cfg); % Need to make cd() work better
@@ -71,18 +71,6 @@ for isub=1:size(data,1)
 end
 cfg.alltimes = reliability.times(:,1,1); 
 
-
-
-
-
-%BASELINE CORRECT PER COREY'S REC (significantly altars some conditions and not others, SDC lower without this)
-%[reliability] = lk_BLC(reliability,cfg);
-
-%FIND LATENCY OF INVDL TRIALS AND EACH SUB'S AVG
-[reliability.amplat, reliability.avgamplat, reliability.ampauc, reliability.ampmax] = lk_findwndw(reliability,cfg);
-% Region x wndw x split x cond x sub x TI   
-% Reg x wndw x cond x sub x TI - average amplitude latencys
-
 %ALT CODE FOR MULTIPLE TIMEPOINTS
 clear reliability
 cnt=1;
@@ -98,45 +86,13 @@ for isub=1:cfg.subnumber
 end
 
 [reliability.amplat, reliability.avgamplat, reliability.ampauc, reliability.ampmax] = lk_findwndwtp(reliability,cfg);
-
-%%
-%QC to ensure integral of avg = avg of integral
-ireg=1; iwndw=2; iTI=8;
-for isub = 1:cfg.subnumber
-    for icond = 1:cfg.condnumber
-        %First avg of integral
-        AofI(icond,isub) = mean(reliability.ampauc(ireg,iwndw,:,icond,isub,iTI),3);
-        % conds x subs
-        
-        %now integral of avg
-        AofA(:,icond,isub) = mean(mean(reliability.amp(cfg.regs(ireg).chan,:,:,icond,isub),1),3);
-        %time x conds x subs
-        alltimes = reliability.times(:,icond,isub);
-        targetidx = find(alltimes == reliability.avgamplat(ireg,iwndw,isub,iTI));
-        peakrangeidx = targetidx - cfg.peak.width(iwndw) : targetidx + cfg.peak.width(iwndw);
-        IofA(icond,isub) = trapz(peakrangeidx,AofA(peakrangeidx,icond,isub));
-        %conds x subs
-    end
-end
-
 %%
 
-%CALC AUC FOR THESE AVG LATENCIES (NOW DONE IN CODE ABOVE)
-%reliability = lk_AUC_TI(reliability, cfg);
-%Region x wndw x trial x cond x sub x TI - each trial may have different
-%latency window at different TI values
-
-
-%CALCULATE AUC STATISTICS WITH BOOTSTRAPPING 
+%HALFSAMPLE THEN FIND PEAKS THEN RUN STATITSICS
 cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
-
-for ifeature = 1:size(cfg.feature,2) %amp = 1 lat =2
-    for icomparison =1:size(cfg.comparisontoplot,2)
-    
-    [reliability.([cfg.feature{ifeature} cfg.comparisontoplot{icomparison}])] = lk_halfsample(reliability,cfg,ifeature,comparison);
-    
-    end
+for icomparison =1:size(cfg.comparison,2)  
+    stats = lk_halfsample_thenpeak(reliability,cfg,icomparison);
 end
 %comparison = 4; - FOR TP1 VS TP2
 
@@ -155,12 +111,12 @@ figure('Position', [100, 100, 1450, 1200])
 %DEFINE PARTS OF STRUCTURE TO PLOT
 %fieldnames(reliability); - can use this for higher versatility
 comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
-feature = 1; %Adjust here
-comparison=1; %and here
-fctoplot = [cfg.feature{feature} cfg.comparisontoplot{comparison}];
+ifeature = 3; %Adjust here
+comparison = 1; %and here
+fctoplot = [cfg.feature{ifeature} cfg.comparison{comparison}];
 stattoplot(:)= {'CCC','pearson','ICC'};
 statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
-featurelabel(:) = {'Area Under Curve', 'Peak Latency'};
+featurelabel(:) = {'Peak Latency', 'Peak Amplitude', 'Area Under Curve (Centered Window)', 'Area Under Curve (Standard Window)'};
 width=length(stattoplot);
 
 colorstring = 'ymcrgb';
@@ -171,8 +127,8 @@ timetoplot = (cfg.trialincr:cfg.trialincr:cfg.trialnumber)';
 for istat = 1:width
     
 comparisonlabeled =0;
-datatoplot_allreg = reliability.(fctoplot).(stattoplot{istat});
-errortoplot_allreg = reliability.(fctoplot).([stattoplot{istat} 's']);
+datatoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{comparison}).(stattoplot{istat}).mean;
+errortoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{comparison}).(stattoplot{istat}).std;
 
 for iwndw=1:size(cfg.peak.target,2)
     subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
@@ -192,7 +148,7 @@ for iwndw=1:size(cfg.peak.target,2)
         %Top middle gets special AUC vs LAT
         if istat == (floor(width/2)+1)
             TITLE = '%s in %s \n %s \n %s-ms peak';
-            title(sprintf(TITLE,featurelabel{feature},comparisonlabel{comparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
+            title(sprintf(TITLE,featurelabel{ifeature},comparisonlabel{comparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
         else
             TITLE = '%s \n %s-ms peak';
             title(sprintf(TITLE,statlabel{istat},cfg.peak.wndwnames{iwndw}));
@@ -226,11 +182,13 @@ legpos = [plotposb(1) onebelow+0.05 0.2 0.2];
         set(hL,'Position', legpos,'box','off');
 
 Date = datestr(today('datetime'));
-fname = [cfg.ProjectName '_' fctoplot '_' [stattoplot{:}] '_' Date];
+fname = [cfg.ProjectName '_' cfg.feature{ifeature} '_' cfg.comparison{icomparison} '_' [stattoplot{:}] '_' Date];
 cd(cfg.stabilityresults);
 ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%WRAPPER STOPS HERE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 
 
 %%
