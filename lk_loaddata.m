@@ -77,6 +77,7 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
 
 end
 idx = find(idx);
+cfg.trialnumber = floor(cfg.trialnumber/cfg.trialincr)*cfg.trialincr;
 cfg.condnumber= size(data,2);
 cfg.subnumber= size(data,1);
 end
