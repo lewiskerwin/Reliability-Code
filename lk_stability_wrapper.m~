@@ -71,6 +71,7 @@ for isub=1:size(data,1)
 end
 cfg.alltimes = reliability.times(:,1,1); 
 
+
 %ALT CODE FOR MULTIPLE TIMEPOINTS
 clear reliability
 cnt=1;
@@ -92,7 +93,7 @@ end
 cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
 for icomparison =1:size(cfg.comparison,2)  
-    stats = lk_halfsample_thenpeak(reliability,cfg,icomparison);
+    stats = lk_halfsample_sortfirst(reliability,cfg,icomparison);
 end
 %comparison = 4; - FOR TP1 VS TP2
 
@@ -112,26 +113,27 @@ figure('Position', [100, 100, 1450, 1200])
 %fieldnames(reliability); - can use this for higher versatility
 comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
 ifeature = 3; %Adjust here
-comparison = 1; %and here
-fctoplot = [cfg.feature{ifeature} cfg.comparison{comparison}];
-stattoplot(:)= {'CCC','pearson','ICC'};
+icomparison = 3; %and here
+fctoplot = [cfg.feature{ifeature} cfg.comparison{icomparison}];
+%stattoplot(:)= {'CCC','pearson','ICC'};
+stattoplot(:)= {'CCC'};
 statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
 featurelabel(:) = {'Peak Latency', 'Peak Amplitude', 'Area Under Curve (Centered Window)', 'Area Under Curve (Standard Window)'};
-width=length(stattoplot);
+%width=length(stattoplot);
 
 colorstring = 'ymcrgb';
 Legend= 0;
 timetoplot = (cfg.trialincr:cfg.trialincr:cfg.trialnumber)';
 
 
-for istat = 1:width
+for icomparison = 1:3
     
 comparisonlabeled =0;
-datatoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{comparison}).(stattoplot{istat}).mean;
-errortoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{comparison}).(stattoplot{istat}).std;
+datatoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(stattoplot{istat}).mean;
+errortoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(stattoplot{istat}).std;
 
 for iwndw=1:size(cfg.peak.target,2)
-    subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
+    subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+icomparison)
     
     hold on
     for ireg = 1:cfg.regnumber
@@ -148,7 +150,7 @@ for iwndw=1:size(cfg.peak.target,2)
         %Top middle gets special AUC vs LAT
         if istat == (floor(width/2)+1)
             TITLE = '%s in %s \n %s \n %s-ms peak';
-            title(sprintf(TITLE,featurelabel{ifeature},comparisonlabel{comparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
+            title(sprintf(TITLE,featurelabel{ifeature},comparisonlabel{icomparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
         else
             TITLE = '%s \n %s-ms peak';
             title(sprintf(TITLE,statlabel{istat},cfg.peak.wndwnames{iwndw}));
