@@ -7,6 +7,7 @@ fNames = cell(size(tmp,1),1); %fNames is an array of cells of same size as tmp
 cnt = 1;%counts number of mat files loaded. Unsure if necessary
 cfg.trialnumber =150;
 
+
 for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     fNames{i,1} = tmp(i).name(1:end-4);%Adds file to list of names (w/o '.mat')
     
@@ -31,17 +32,16 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     end
     if ~idx(i),continue,end
     
-    %%
-%     %Make sure file contains one of the desired timepoints
-%     for itp = 1:length(cfg.file.tp)% Go through each relevant subject
-%         if ~isempty(strfind(fNames{i,1},cfg.file.tp{itp}))
-%             idx(i) =1;
-%             break
-%         else idx(i) = 0;
-%         end
-%     end
-%     if ~idx(i),continue,end
-itp=1; %DELET THIS AFTER UNCOMMENTING THE ABOVE
+    %
+    %Make sure file contains one of the desired timepoints
+    for itp = 1:length(cfg.file.tp)% Go through each relevant subject
+        if ~isempty(strfind(fNames{i,1},cfg.file.tp{itp}))
+            idx(i) =1;
+            break
+        else idx(i) = 0;
+        end
+    end
+    if ~idx(i),continue,end
     
     %%
     %Make sure file contains one of the desired subs
@@ -77,14 +77,16 @@ itp=1; %DELET THIS AFTER UNCOMMENTING THE ABOVE
     data(isub,itp,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
     disp(['Loading matfile for sub ' cfg.file.subs{isub} ' timepoint ' num2str(itp) ' condition ' cfg.file.preconds{icond}  '...']);
     %Now Load and label each data file...
-    data(isub,itp,icond).EEG.baseline_variance=nanmean(nanmean(var(data(isub,itp,icond).EEG.data,1)));
+    %data(isub,itp,icond).EEG.baseline_variance = nanmean(nanmean(var(data(isub,itp,icond).EEG.data,1)));
+    
     cnt = cnt + 1;
     
-    if cfg.trialnumber > size(data(isub,icond).EEG.data,3)
-    cfg.trialnumber = size(data(isub,icond).EEG.data,3);
-
+    if cfg.trialnumber > size(data(isub,itp,icond).EEG.data,3)
+    cfg.trialnumber = size(data(isub,itp,icond).EEG.data,3);
+    end
 end
 idx = find(idx);
+cfg.trialnumber = floor(cfg.trialnumber/cfg.trialincr)*cfg.trialincr;
 cfg.condnumber= size(data,3);
 cfg.subnumber= size(data,1);
 cfg.tpnumber= size(data,2);

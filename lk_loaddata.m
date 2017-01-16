@@ -1,8 +1,7 @@
 function [data, cfg] = lk_loaddata(cfg)
 % THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
-cd(cfg.DrivePathData);cd('matfiles')%We're looking at Matfiles
+cd(cfg.DrivePathData); cd('matfiles');%We're looking at Matfiles
 clear data idx fNames  include 
-clear reliability
 tmp = dir('*.mat'); %tmp is a structure that contains all these names
 fNames = cell(size(tmp,1),1); %fNames is an array of cells of same size as tmp
 cnt = 1;%counts number of mat files loaded. Unsure if necessary
@@ -71,6 +70,7 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     
     if cfg.trialnumber > size(data(isub,icond).EEG.data,3)
     cfg.trialnumber = size(data(isub,icond).EEG.data,3);
+    end
     
     cnt = cnt + 1;
     

@@ -15,6 +15,14 @@ switch cfg.ProjectName
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
         cfg.file.tp = {'tp1';'tp2'};
         
+    case 'Stability'
+        %My Config
+        cfg.file.subs = {'112';'113';'114'; '115';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+        cfg.file.precondprefix = {'pre', ''; '_', '_'};
+        cfg.file.precond_include(1,:) = {'fromConcat_120'};
+        cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
+        cfg.file.tp = {'tp1';'tp2'};
+        
     case 'vlpfc_TBS'
         %Cammie Config
         cfg.file.subs = {'105';'110'; '116';'118';'121';'122'}; cfg.file.preconds = {'right';'left'};%'final';'washout'};
@@ -55,10 +63,11 @@ cfg.comparison = {'cond', 'split', 'alt'};
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
 [tempdata, cfg] = lk_loaddata(cfg); % Need to make cd() work better
 
+[tempdata,cfg] = lk_loaddatatp(cfg);
+
 
 %%
-%New start to reliability (before integrating AUC) - should integrate into
-%load data
+%NOW CONVERT TO SINGLE MATRIX 'DATA'
 clear data
 cnt=1;
 cutinitialtime=1;
@@ -79,9 +88,9 @@ cutinitialtime=1;
 for isub=1:cfg.subnumber
     for itp =1:cfg.tpnumber
         for icond=1:cfg.condnumber
-            data.amp(:,:,:,icond,itp,isub) = data(isub,itp,icond).EEG.data(:,cutinitialtime:size(data(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
+            data.amp(:,:,:,icond,itp,isub) = tempdata(isub,itp,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
             %electrodes x time x trials x cond x sub
-            data.times(:,icond,itp,isub) = data(isub,itp,icond).EEG.times(cutinitialtime:size(data(isub,itp,icond).EEG.data,2));
+            data.times(:,icond,itp,isub) = tempdata(isub,itp,icond).EEG.times(cutinitialtime:size(tempdata(isub,itp,icond).EEG.data,2));
         end
     end
 end
@@ -93,13 +102,13 @@ end
 %[data.amplat, data.avgamplat, data.ampauc, data.ampmax] = lk_findwndwtp(data,cfg);
 %%
 
-%HALFSAMPLE THEN FIND PEAKS THEN RUN STATITSICS
-cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
-cfg.itnumber= 100; %Number of iterations
-for icomparison =1:size(cfg.comparison,2)  
-    stats = lk_halfsample_sortfirst(data,cfg,icomparison);
-end
-%comparison = 4; - FOR TP1 VS TP2
+% %HALFSAMPLE THEN FIND PEAKS THEN RUN STATITSICS
+% cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
+% cfg.itnumber= 100; %Number of iterations
+% for icomparison =1:size(cfg.comparison,2)  
+%     stats = lk_halfsample_sortfirst(data,cfg,icomparison);
+% end
+% %comparison = 4; - FOR TP1 VS TP2
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
 iTI =6;
