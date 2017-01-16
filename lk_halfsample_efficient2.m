@@ -1,7 +1,7 @@
 %THIS ONE USES AN 'ALLTRIALKEY' THAT RETAINS INDEXES IN FULL ARRAY OF ALL
 %TRIALS
 
-function [stats] = lk_halfsample_thenpeak(reliability,cfg,icomparison)
+function [stats] = lk_halfsample(data,cfg)
 
 rng(0,'twister');
 
@@ -19,7 +19,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     cfg.sampleperboot = cfg.trialincr/2; % For each boot, take 50%
     cfg.itnumber=100; %100 interations
     bootlength = cfg.trialincr; %Always 10 with half-sampling
-    %featureddata = reliability.(cfg.feature{feature});
+    %featureddata = data.(cfg.feature{feature});
     
     %CYCLE THROUGH COMPARISONS
     for icomparison =1:size(cfg.comparison,2)
@@ -69,15 +69,15 @@ end
 
 %now that we have key
 %AVERAGE TOGETHER TRIALS
-%permuted = permute(reliability.amp(:,:,:,:,:),[1 2 5 4 3]);
-dimensions = size(reliability.amp);
-reshaped = reshape(reliability.amp,dimensions(1),dimensions(2),dimensions(3)*dimensions(4),dimensions(5));
+%permuted = permute(data.amp(:,:,:,:,:),[1 2 5 4 3]);
+dimensions = size(data.amp);
+reshaped = reshape(data.amp,dimensions(1),dimensions(2),dimensions(3)*dimensions(4),dimensions(5));
 
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr);
-    %dimensions = size(reliability.amp(:,:,1:iTI*cfg.trialincr,:,:));
+    %dimensions = size(data.amp(:,:,1:iTI*cfg.trialincr,:,:));
     % trialspersub = dimensions(3)*dimensions(4);
-    %reliability.ampcat(:,:,1:iTI*cfg.trialincr*cfg.condnumber,:)=...
-    %reshape(reliability.amp(:,:,1:iTI*cfg.trialincr,:,:),dimensions(1),dimensions(2),trialspersub,dimensions(5))
+    %data.ampcat(:,:,1:iTI*cfg.trialincr*cfg.condnumber,:)=...
+    %reshape(data.amp(:,:,1:iTI*cfg.trialincr,:,:),dimensions(1),dimensions(2),trialspersub,dimensions(5))
     for icomparison = 1:size(cfg.comparison,2)
         for iit = 1:cfg.itnumber
             clear sorted
@@ -117,45 +117,45 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr);
 end
 toc
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% 
+% alltrialkey(:,:,:,halfsampleidx(:,:))    
+%     
+% %CYCLE THROUGH ITERATIONS - THIS ALLOWS ME TO PUT REG AND WINDW IN
+% %FUNCTION wndwsortfirst
+% for iit =1:cfg.itnumber
+%     sorted = squeeze(mean(prebindata(:,:,samplekey(iit,:),:,:),3));
+%     %CHAN X TIME X COND/SPLIT/ALT X SUB
+%     
+%     
+%     %FIND LATENCY, AMPLITUDE, AND TWO TYPES OF AUC (FOR THIS IT AND TI)
+%     [peakdata] = lk_findwndw_sortfirst(sorted,cfg);
+%     
+%     %NOW RUN STATS ON THIS PEAK DATA
+%     for ireg = 1:cfg.regnumber
+%         for iwndw = 1:cfg.wndwnumber
+%             for ifeature = 1:size(cfg.feature,2) %lat = 1 max =2 cauc = 3 sauc = 4
+%                 statmat = peakdata.(cfg.feature{ifeature});
+%                 statmat = squeeze(statmat(ireg,iwndw,:,:))';
+%                 [allit.(cfg.feature{ifeature}).pearson(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).tp(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).CCC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).ICC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).SDC(ireg,iwndw,iit)] = lk_stats(statmat,cfg);
+%                 %FEATURE . REG x WNDW X iteration
+%             end
+%         end
+%     end
+% end
+% 
+% %NOW ITERATIONS ALL DONE, FIND AVG AND STD OF EACH STAT AND FEATURE (reg and wndw at once)
+% for ifeature = 1:size(cfg.feature,2) %lat = 1 max =2 cauc = 3 sauc = 4
+%     for istat = 1:size(cfg.stat,2)
+%         stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).mean(:,:,iTI) = mean(allit.(cfg.feature{ifeature}).(cfg.stat{istat}),3);
+%         % feature . statistic . reg x wndw x TI
+%         stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).std(:,:,iTI) = std(allit.(cfg.feature{ifeature}).(cfg.stat{istat}),0,3);
+%         % feature . statistic . reg x wndw x TI
+%     end
+% end
 
-
-alltrialkey(:,:,:,halfsampleidx(:,:))    
-    
-    %CYCLE THROUGH ITERATIONS - THIS ALLOWS ME TO PUT REG AND WINDW IN
-    %FUNCTION wndwsortfirst
-    for iit =1:cfg.itnumber
-        sorted = squeeze(mean(prebindata(:,:,samplekey(iit,:),:,:),3));
-        %CHAN X TIME X COND/SPLIT/ALT X SUB
-        
-        
-        %FIND LATENCY, AMPLITUDE, AND TWO TYPES OF AUC (FOR THIS IT AND TI)
-        [peakdata] = lk_findwndw_sortfirst(sorted,cfg);
-        
-        %NOW RUN STATS ON THIS PEAK DATA
-        for ireg = 1:cfg.regnumber
-            for iwndw = 1:cfg.wndwnumber
-                for ifeature = 1:size(cfg.feature,2) %lat = 1 max =2 cauc = 3 sauc = 4
-                    statmat = peakdata.(cfg.feature{ifeature});
-                    statmat = squeeze(statmat(ireg,iwndw,:,:))';
-                    [allit.(cfg.feature{ifeature}).pearson(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).tp(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).CCC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).ICC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).SDC(ireg,iwndw,iit)] = lk_stats(statmat,cfg);
-                    %FEATURE . REG x WNDW X iteration
-                end
-            end
-        end
-    end
-    
-    %NOW ITERATIONS ALL DONE, FIND AVG AND STD OF EACH STAT AND FEATURE (reg and wndw at once)
-    for ifeature = 1:size(cfg.feature,2) %lat = 1 max =2 cauc = 3 sauc = 4
-        for istat = 1:size(cfg.stat,2)
-            stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).mean(:,:,iTI) = mean(allit.(cfg.feature{ifeature}).(cfg.stat{istat}),3);
-            % feature . statistic . reg x wndw x TI
-            stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).std(:,:,iTI) = std(allit.(cfg.feature{ifeature}).(cfg.stat{istat}),0,3);
-            % feature . statistic . reg x wndw x TI
-        end
-    end
-    
 end
     
-end
+
 

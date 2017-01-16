@@ -47,7 +47,7 @@ cfg.wndwnumber = size(cfg.peak.target,2);
 cfg.numsplit= 2;
 cfg.trialincr = 10;
 
-%fieldnames(reliability); - can use this for higher versatility
+%fieldnames(data); - can use this for higher versatility
 cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
 cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
 cfg.comparison = {'cond', 'split', 'alt'};
@@ -59,41 +59,45 @@ cfg.comparison = {'cond', 'split', 'alt'};
 %%
 %New start to reliability (before integrating AUC) - should integrate into
 %load data
-clear reliability
+clear data
 cnt=1;
 cutinitialtime=1;
-for isub=1:size(data,1)
-    for icond=1:size(data,2)
-        reliability.amp(:,:,:,icond,isub) = tempdata(isub,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,icond).EEG.data,2),1:cfg.trialnumber);
+for isub=1:size(tempdata,1)
+    for icond=1:size(tempdata,2)
+        data.amp(:,:,:,icond,isub) = tempdata(isub,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,icond).EEG.data,2),1:cfg.trialnumber);
         %electrodes x time x trials x cond x sub
-        reliability.times(:,icond,isub) = tempdata(isub,icond).EEG.times(cutinitialtime:size(tempdata(isub,icond).EEG.data,2));
+        data.times(:,icond,isub) = tempdata(isub,icond).EEG.times(cutinitialtime:size(tempdata(isub,icond).EEG.data,2));
     end
 end
-cfg.alltimes = reliability.times(:,1,1); 
+cfg.alltimes = data.times(:,1,1); 
 
 
 %ALT CODE FOR MULTIPLE TIMEPOINTS
-clear reliability
+clear data
 cnt=1;
 cutinitialtime=1;
 for isub=1:cfg.subnumber
     for itp =1:cfg.tpnumber
         for icond=1:cfg.condnumber
-            reliability.amp(:,:,:,icond,itp,isub) = data(isub,itp,icond).EEG.data(:,cutinitialtime:size(data(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
+            data.amp(:,:,:,icond,itp,isub) = data(isub,itp,icond).EEG.data(:,cutinitialtime:size(data(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
             %electrodes x time x trials x cond x sub
-            reliability.times(:,icond,itp,isub) = data(isub,itp,icond).EEG.times(cutinitialtime:size(data(isub,itp,icond).EEG.data,2));
+            data.times(:,icond,itp,isub) = data(isub,itp,icond).EEG.times(cutinitialtime:size(data(isub,itp,icond).EEG.data,2));
         end
     end
 end
 
-[reliability.amplat, reliability.avgamplat, reliability.ampauc, reliability.ampmax] = lk_findwndwtp(reliability,cfg);
+
+ [stats] = lk_halfsample(data,cfg);
+
+
+%[data.amplat, data.avgamplat, data.ampauc, data.ampmax] = lk_findwndwtp(data,cfg);
 %%
 
 %HALFSAMPLE THEN FIND PEAKS THEN RUN STATITSICS
 cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
 cfg.itnumber= 100; %Number of iterations
 for icomparison =1:size(cfg.comparison,2)  
-    stats = lk_halfsample_sortfirst(reliability,cfg,icomparison);
+    stats = lk_halfsample_sortfirst(data,cfg,icomparison);
 end
 %comparison = 4; - FOR TP1 VS TP2
 
@@ -101,7 +105,7 @@ end
 iTI =6;
 ireg =3;
 isub=2;
-lk_waveformplot2(reliability,cfg,iTI,ireg,isub);
+lk_waveformplot2(data,cfg,iTI,ireg,isub);
 
 
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON CCC
@@ -117,30 +121,30 @@ lk_plotregbycomp(stats,cfg,ifeature,istat);
 %PEARSON TIME - need to rewrite for AUCTI
 %start with split 1 vs 2 AND cond 1 vs cond 2 in many different splits
 iTI=10;
-reliability=lk_pearson(reliability,cfg,iTI);
+data=lk_pearson(data,cfg,iTI);
 
 
  %%
 %PRESENT ICC FINDINGS FOR HIGHEST TRIAL NUMBER
 figure
-trialmax = size(reliability.ICC,4)
-reliability.dims = {'split' 'condition' 'subject'};
-C = reliability.ICC(:,:,3,trialmax);%We only display ICC between subjects because we WANT trivial ICC values between conditions and splits
+trialmax = size(data.ICC,4)
+data.dims = {'split' 'condition' 'subject'};
+C = data.ICC(:,:,3,trialmax);%We only display ICC between subjects because we WANT trivial ICC values between conditions and splits
 subplot(2,1,1);
 imagesc(C', 'CDataMapping','scaled')
 colorbar
 colormap jet
-title (['ICC across various ' reliability.dims{3} 's at ' num2str(trialmax*cfg.trialincr) ' trials.']);
+title (['ICC across various ' data.dims{3} 's at ' num2str(trialmax*cfg.trialincr) ' trials.']);
 set(gca,'XTickLabel',axisname);
 set(gca,'YTick',1:4,'YTickLabel', cfg.peak.wndwnames);
    
-C = reliability.SDC(:,:,2,trialmax);%We only display ICC between subjects because we WANT trivial ICC values between conditions and splits
+C = data.SDC(:,:,2,trialmax);%We only display ICC between subjects because we WANT trivial ICC values between conditions and splits
 subplot(2,1,2);
 imagesc(C', 'CDataMapping','scaled')
 colorbar
 colormap jet
 TITLE = 'Smallest Detectable Change In a Post-Intervention %s at %d trials \n (Results in arbitrary units of AUC)';
-title(sprintf(TITLE,reliability.ICCdim{sdcdim},trialmax*cfg.trialincr));
+title(sprintf(TITLE,data.ICCdim{sdcdim},trialmax*cfg.trialincr));
 set(gca,'XTickLabel',axisname);
 set(gca,'YTick',1:4,'YTickLabel', cfg.peak.wndwnames);
    
@@ -160,19 +164,19 @@ datapost = lk_loaddata(cfg);
 
 datapost = lk_simplessAUC(datapost,cfg);
     
-clear reliabilitypost
-reliabilitypost = lk_binFromRegionsAUC(datapost,cfg);    
+clear datapost
+datapost = lk_binFromRegionsAUC(datapost,cfg);    
 
 
-baselineavg = mean(reliability.AUC,4);%average across conditions pre1 and pre2
+baselineavg = mean(data.AUC,4);%average across conditions pre1 and pre2
 
 
-change = squeeze(reliabilitypost.AUC - baselineavg); %This matrix is of change between pre(avg) and post for each reg, wndw, split, sub
+change = squeeze(datapost.AUC - baselineavg); %This matrix is of change between pre(avg) and post for each reg, wndw, split, sub
 
 %So this loop (which averages together splits) says that none of our four
 %subjects have significant findings
 for isub=1:length(subs)
-    mean(change(:,:,:,isub),3) ./ reliability.SDC(:,:,2)
+    mean(change(:,:,:,isub),3) ./ data.SDC(:,:,2)
     
 end
     
@@ -181,7 +185,7 @@ end
 %story... mostly...
 for isplit=1:numsplit
 for isub=1:length(subs)
-    change(:,:,isplit,isub) ./ reliability.SDC(:,:,2)
+    change(:,:,isplit,isub) ./ data.SDC(:,:,2)
     
 end
 end
@@ -189,14 +193,14 @@ end
 squeeze(change(1,4,1,:,:))
 
 %Let's try group SDC (divide by square root of n)
-mean(mean(change(:,:,:,:),3),4) ./ (reliability.SDC(:,:,2)/(length(subs)^.5))
+mean(mean(change(:,:,:,:),3),4) ./ (data.SDC(:,:,2)/(length(subs)^.5))
 
 
 %%
 %QUALITY CONTROL CODE
 %Make artificial data of random numbers between 0 and 1
 QC.AUC = rand(6,4,2,2,5)
-QC.aucdim = reliability.aucdim;
+QC.aucdim = data.aucdim;
 %Create correlation in sigdim
 sigdim = 4;
 for idim=1:size(QC.AUC,sigdim)
@@ -207,7 +211,7 @@ QC = lk_variance(QC,cfg);
 
 
 %Here I compare AUC calculations to raw data...looks fine
- mean(reliability.AUC(3,3,:,:,:),5)
+ mean(data.AUC(3,3,:,:,:),5)
 
 %This should take data for literally ALL conditions and subjects
     %specificed at the top of wrapper

@@ -1,86 +1,122 @@
-function [stats] = lk_halfsample(reliability,cfg,feature,comparison)
+%THIS ONE USES AN 'ALLTRIALKEY' THAT RETAINS INDEXES IN FULL ARRAY OF ALL
+%TRIALS
+
+function [stats] = lk_halfsample(data,cfg)
 
 rng(0,'twister');
 
-%CYCLE THROUGH TRIAL NUMBERS
-for iTI = 1:floor(cfg.trialnumber/cfg.trialincr) 
-trialmax = iTI*cfg.trialincr; %number of trials we're looking at here
-splitlength = trialmax/cfg.numsplit; %numsplit is set to 2 for code to work
+cfg.bootnumber= cfg.trialnumber/cfg.trialincr; %Have exactly one boot per ten trials (i.e per one block)
 
-cfg.bootnumber= iTI; %Have exactly one boot per ten trials (i.e per one block)
-cfg.sampleperboot = cfg.trialincr/2; % For each boot, take 50% 
-cfg.itnumber=100; %100 interations
-bootlength = cfg.trialincr; %Always 10 with half-sampling
-featureddata = reliability.(cfg.featuretoplot{feature});
+clear halfsampleidx
+%CYCLE THROUGH TRIAL NUMBERS 
+%MUST CYCLE THROUGH TI BECAUSE SPLITS CHANGE AS FUNCTION OF TI
+alltrialkey = zeros(cfg.trialnumber/cfg.trialincr,size(cfg.comparison,2),2,cfg.trialnumber);
+for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
+    cfg.trialmax = iTI*cfg.trialincr; %number of trials we're looking at here
+    splitlength = cfg.trialmax/cfg.numsplit; %numsplit is set to 2 for code to work
     
-    switch comparison
+    cfg.sampleperboot = cfg.trialincr/2; % For each boot, take 50%
+    cfg.itnumber=100; %100 interations
+    bootlength = cfg.trialincr; %Always 10 with half-sampling
+    %featureddata = data.(cfg.feature{feature});
+    
+    %CYCLE THROUGH COMPARISONS
+    for icomparison =1:size(cfg.comparison,2)
+        switch cfg.comparison{icomparison}
         
-        %PRE-BIN DATA FOR COND:
-        case 1
+        case 'cond'
+            for idist = 1:2;
+                alltrialkey(iTI,icomparison,idist,1:iTI*cfg.trialincr) = (1:cfg.trialmax)+((idist-1)*cfg.trialnumber);
+                %TI x comparison x distribution x trial
+            end
             
-            prebindata = squeeze(featureddata(:,:,1:trialmax,:,:,iTI));% This is the line that will differ cond vs split
-            
-            
-        %PRE-BIN DATA FOR SPLIT HALF - rearranges all data to do split half
-        case 2
-            clear prebindata
-            splitlength = trialmax/cfg.numsplit;
+        case 'split'
+            splitlength = cfg.trialmax/cfg.numsplit;
             splitrange = 1:splitlength; % keep basic and update in loops below
-            
-            for icond = 1:cfg.condnumber
-                for isplit = 1:cfg.numsplit
-                    temp = squeeze(featureddata(:,:,splitrange+(splitlength*(isplit-1)),icond,:,iTI));
-                    prebindata(:,:,splitrange+(splitlength*(icond-1)),isplit,:) =temp;
-                    %Now "condition" 1 has only 1st half and "condition" 2 has 2nd half
-                end
+            for idist = 1:2; 
+                alltrialkey(iTI,icomparison,idist,1:iTI*cfg.trialincr) = ...
+                    [splitrange+((idist-1)*splitlength) splitrange+((idist-1)*splitlength)+cfg.trialnumber];     
             end
             
-        %PRE-BIN DATA FOR ALT BOOTSTRAPPING
-        case 3
-            clear prebindata
-            altsplitrange = (0:cfg.numsplit:trialmax-cfg.numsplit)+1;
-            
-            for icond = 1:cfg.condnumber
-                for isplit = 1:cfg.numsplit
-                    temp = squeeze(featureddata(:,:,(altsplitrange+isplit-1),icond,:,iTI));
-                    prebindata(:,:,(altsplitrange+icond-1),isplit,:) =temp;
-                    %Now "condition" 1 has only odds and "condition" 2 has only evens
-                end
+        case 'alt'
+            altsplitrange = (0:cfg.numsplit:cfg.trialmax-cfg.numsplit)+1;
+            for idist = 1:2; 
+                alltrialkey(iTI,icomparison,idist,1:iTI*cfg.trialincr) =...
+                    [altsplitrange+(idist-1) altsplitrange+(idist-1)+cfg.trialmax];     
             end
-            
+           
+        end
     end
     
-   %HALF-SAMPLE AT 100 ITERATIONS
-   clear samplekey
-    for iit = 1:cfg.itnumber
-       for iboot = 1:cfg.bootnumber
-            samplekey(iit,:,iboot) = datasample([1:bootlength],5,'Replace',false) + ((iboot-1)*bootlength);%use for every boot, reg, wndw
-       end
-   end
-   samplekey = reshape(samplekey, [cfg.itnumber, 5*cfg.bootnumber]);
-    
-   %RUN STATS ON EACH ITERATION (FOR EACH REG/WNDW COMBO)
-    for ireg =1:cfg.regnumber
-        for iwndw = 1:cfg.wndwnumber
-           
-            for iit=1:cfg.itnumber
-                statmat = squeeze(mean(prebindata(ireg,iwndw,samplekey(iit,:),:,:),3))';
-                [pearson(iit), ttest(iit), CCC(iit), ICC(iit), SDC(iit)] = lk_stats(statmat,cfg);
+end
+
+%MAKE 100 ITERATIONS WITH UNIQUE TRIAL ASSIGNMENT (USE iTI rather than
+%indexing iboot)
+%I dont' think I need iTI here!
+
+for iit = 1:cfg.itnumber
+    for iboot = 1:cfg.bootnumber
+        bootrange=[1:bootlength]+bootlength*(iboot-1);
+        nonconcatidx(:,iboot) = datasample([bootrange],cfg.sampleperboot,'Replace',false);
+        
+    end
+    halfsampleidx(iit,:) = reshape(nonconcatidx,[1 cfg.sampleperboot*cfg.bootnumber]);
+    iterationtrialkey(:,:,:,:,iit) = alltrialkey(:,:,:,halfsampleidx(iit,:));
+    %TI x comparison x dist x trial x it
+end
+
+
+%now that we have key
+%AVERAGE TOGETHER TRIALS
+%permuted = permute(data.amp(:,:,:,:,:),[1 2 5 4 3]);
+dimensions = size(data.amp);
+reshaped = reshape(data.amp,dimensions(1),dimensions(2),dimensions(3)*dimensions(4),dimensions(5));
+
+for iTI = 1:floor(cfg.trialnumber/cfg.trialincr);
+    %dimensions = size(data.amp(:,:,1:iTI*cfg.trialincr,:,:));
+    % trialspersub = dimensions(3)*dimensions(4);
+    %data.ampcat(:,:,1:iTI*cfg.trialincr*cfg.condnumber,:)=...
+    %reshape(data.amp(:,:,1:iTI*cfg.trialincr,:,:),dimensions(1),dimensions(2),trialspersub,dimensions(5))
+    for icomparison = 1:size(cfg.comparison,2)
+        for iit = 1:cfg.itnumber
+            clear sorted
+                
+                trials = squeeze(iterationtrialkey(iTI,icomparison,:,:,iit));
+                trials = trials(:,1:(iTI*5));
+                sorted(:,:,1,:) = mean(reshaped(:,:,trials(1,:),:),3);
+                sorted(:,:,2,:) = mean(reshaped(:,:,trials(2,:),:),3);
+                %elec x ms x dist x sub
+                
+                [peakdata] = lk_findwndw_sortfirst(sorted,cfg);
+                %feature . reg x wndw x dist x sub 
+                     
+                %NOW RUN STATS ON THIS PEAK DATA
+                for ireg = 1:cfg.regnumber
+                    for iwndw = 1:cfg.wndwnumber
+                        for ifeature = 1:size(cfg.feature,2)
+                            statmat = peakdata.(cfg.feature{ifeature});
+                            statmat = squeeze(statmat(ireg,iwndw,:,:))';
+                            [allit.(cfg.feature{ifeature}).pearson(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).tp(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).CCC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).ICC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).SDC(ireg,iwndw,iit)] = lk_stats(statmat,cfg);
+                            
+                        end
+                    end
+                end
+                
+        end
+        %NOW ITERATIONS ALL DONE, FIND AVG AND STD OF EACH STAT AND FEATURE (reg and wndw at once)
+        for ifeature = 1:size(cfg.feature,2) %lat = 1 max =2 cauc = 3 sauc = 4
+            for istat = 1:size(cfg.stat,2)
+                stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).mean(:,:,iTI) = mean(allit.(cfg.feature{ifeature}).(cfg.stat{istat}),3);
+                % feature . statistic . reg x wndw x TI
+                stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).std(:,:,iTI) = std(allit.(cfg.feature{ifeature}).(cfg.stat{istat}),0,3);
+                % feature . statistic . reg x wndw x TI
             end
-            stats.pearson(ireg,iwndw,iTI) = mean(pearson);
-            stats.pearsons(ireg,iwndw,iTI) = std(pearson);
-            stats.ttest(ireg,iwndw,iTI) = mean(ttest);
-            stats.ttests(ireg,iwndw,iTI) = std(ttest);
-            stats.CCC(ireg,iwndw,iTI) = mean(CCC);
-            stats.CCCs(ireg,iwndw,iTI) = std(CCC);
-            stats.ICC(ireg,iwndw,iTI) = mean(ICC);
-            stats.ICCs(ireg,iwndw,iTI) = std(ICC);
-            stats.SDC(ireg,iwndw,iTI) = mean(SDC);
-            stats.SDCs(ireg,iwndw,iTI) = std(SDC);
-            stats.SDCp(ireg,iwndw,iTI) = stats.SDC(ireg,iwndw,iTI)./mean(mean(mean(prebindata(ireg,iwndw,:,:,:))));
-            
-            
         end
     end
 end
+
+
 end
+    
+
+
