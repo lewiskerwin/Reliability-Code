@@ -8,16 +8,26 @@ close all
 cfg.file = [];
 switch cfg.ProjectName
     case 'rTMS'
-        %Corey Config
+        %Corey Config old
         cfg.file.subs = {'112';'113';'114'; '115';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+        cfg.file.subprefix = [];
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include(1,:) = {'fromConcat_120'};
+        cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
+        cfg.file.tp = {'tp1';'tp2'};
+    
+    case 'rtms' %New folder within allresults
+        cfg.file.subs = {'116';'117';'118'; '119';'120';'121';'122';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+        cfg.file.subprefix = 'rtms_';
+        cfg.file.precondprefix = {'pre', ''; '_', '_'};
+        cfg.file.precond_include = [];
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
         cfg.file.tp = {'tp1';'tp2'};
         
     case 'Stability'
         %My Config
         cfg.file.subs = {'112';'113';'114'; '115';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+        cfg.file.subprefix = [];
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include(1,:) = {'fromConcat_120'};
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
@@ -25,10 +35,13 @@ switch cfg.ProjectName
         
     case 'vlpfc_TBS'
         %Cammie Config
-        cfg.file.subs = {'105';'110'; '116';'118';'121';'122'}; cfg.file.preconds = {'right';'left'};%'final';'washout'};
+        cfg.file.subs = {'105';'110'; '116';'118';'121';'122'}; cfg.file.preconds = {'right';'left'};
+        cfg.file.subprefix = [];
         cfg.file.precondprefix = { '', ''};
         cfg.file.precond_include(1,:) = {'vlpfc'};
-        cfg.file.precond_exclude(1,:) = {'garbag'};     
+        cfg.file.precond_exclude(1,:) = {'garbag'};
+        
+
 end
 
 %So lets find out how we'll bin up the AUCs
@@ -58,27 +71,40 @@ cfg.trialincr = 10;
 %fieldnames(data); - can use this for higher versatility
 cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
 cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
-cfg.comparison = {'cond', 'split', 'alt'};
+
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
-[tempdata, cfg] = lk_loaddata(cfg); % Need to make cd() work better
+% [tempdata, cfg] = lk_loaddata(cfg); % Need to make cd() work better
+% cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.tpnumber;
+% cfg.TInumber = floor(cfg.trialnumber/cfg.trialincr);
 
 [tempdata,cfg] = lk_loaddatatp(cfg);
+cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.tpnumber;
+cfg.TInumber = floor(cfg.trialnumber/cfg.trialincr);
+cfg.TItocompare = [1,2,4,8];
 
+if isempty(cfg.file.tp) 
+    cfg.comparison = {'alt','split','cond', 'timepoint','TI'};
+    cfg.comparisonlabel = {'Odd vs Even Trials','Split 1 vs 2','Condition 1 vs 2','Day 1 vs 2', ['X Trials vs ' num2str(cfg.trialnumber)]};
+else
+    cfg.comparison = {'alt','split','cond','TI'}; 
+    cfg.comparisonlabel = {'Odd vs Even Trials','Split 1 vs 2','Condition 1 vs 2', ['X Trials vs ' num2str(cfg.trialnumber)]};
+end
+cfg.compnumber = size(cfg.comparison,2);
 
 %%
 %NOW CONVERT TO SINGLE MATRIX 'DATA'
-clear data
-cnt=1;
-cutinitialtime=1;
-for isub=1:size(tempdata,1)
-    for icond=1:size(tempdata,2)
-        data.amp(:,:,:,icond,isub) = tempdata(isub,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,icond).EEG.data,2),1:cfg.trialnumber);
-        %electrodes x time x trials x cond x sub
-        data.times(:,icond,isub) = tempdata(isub,icond).EEG.times(cutinitialtime:size(tempdata(isub,icond).EEG.data,2));
-    end
-end
-cfg.alltimes = data.times(:,1,1); 
+% clear data
+% cnt=1;
+% cutinitialtime=1;
+% for isub=1:size(tempdata,1)
+%     for icond=1:size(tempdata,2)
+%         data.amp(:,:,:,icond,isub) = tempdata(isub,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,icond).EEG.data,2),1:cfg.trialnumber);
+%         %electrodes x time x trials x cond x sub
+%         data.times(:,icond,isub) = tempdata(isub,icond).EEG.times(cutinitialtime:size(tempdata(isub,icond).EEG.data,2));
+%     end
+% end
+% cfg.alltimes = data.times(:,1,1); 
 
 
 %ALT CODE FOR MULTIPLE TIMEPOINTS
@@ -89,14 +115,21 @@ for isub=1:cfg.subnumber
     for itp =1:cfg.tpnumber
         for icond=1:cfg.condnumber
             data.amp(:,:,:,icond,itp,isub) = tempdata(isub,itp,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
-            %electrodes x time x trials x cond x sub
+            %electrodes x time x trials x cond x tp x sub
             data.times(:,icond,itp,isub) = tempdata(isub,itp,icond).EEG.times(cutinitialtime:size(tempdata(isub,itp,icond).EEG.data,2));
         end
     end
 end
+cfg.alltimes = data.times(:,1,1); 
 
-
- [stats] = lk_halfsample(data,cfg);
+clear stats
+tic
+[stats,data] = lk_halfsampletp(data,cfg);
+toc %takes an hour for 5 subs with 100 iterations, with only 1 it
+ 
+ 
+ 
+ [stats,data] = lk_halfsampletp_forcammie(data,cfg);
 
 
 %[data.amplat, data.avgamplat, data.ampauc, data.ampmax] = lk_findwndwtp(data,cfg);
@@ -104,7 +137,7 @@ end
 
 % %HALFSAMPLE THEN FIND PEAKS THEN RUN STATITSICS
 % cfg.bootlength =10; %Number of bins ("boots") that each data point will be divided into which will be sorted and allocated randomly
-% cfg.itnumber= 100; %Number of iterations
+%cfg.itnumber= 10; %Number of iterations
 % for icomparison =1:size(cfg.comparison,2)  
 %     stats = lk_halfsample_sortfirst(data,cfg,icomparison);
 % end
@@ -114,7 +147,7 @@ end
 iTI =6;
 ireg =3;
 isub=2;
-lk_waveformplot2(data,cfg,iTI,ireg,isub);
+lk_waveformplot3(data,cfg,iTI,ireg,isub);
 
 
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON CCC
@@ -124,6 +157,11 @@ lk_plotregbystat(stats,cfg,ifeature,icomparison);
 
 
 lk_plotregbycomp(stats,cfg,ifeature,istat);
+
+%TO MAKE THIS LINE WORK WE NEED TO HAVE LK_HALFSAMPLE RECORD AVERAGED
+%LATENCY, AMP AND AUC AS WELL AS CALCULATING STATS (SIMILAR TO THE "FOR
+%CAMMIE" VERSION).
+lk_plotTIbar(data,stats,cfg,ifeature,istat);
 
 
 %%

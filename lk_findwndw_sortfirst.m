@@ -7,13 +7,13 @@ for ireg = 1:size(cfg.regs,2)
     for iwndw = 1:length(cfg.peak.target) %Go through each PEAK (e.g. 50, 100 200)
         standardpeakidx = find( cfg.alltimes == cfg.peak.target(iwndw));
         
-        for isub = 1:cfg.subnumber
+        for isub = 1:size(sorted,4)
             
             %COMMENTED OUT BECAUSE NOT SURE IF WE NEED AVG FOR SUBJECT
             %Find peaks of all splits and conds combined
             
             %FOR EACH COND/SPLIT/ALT...
-            for idist = 1:2
+            for idist = 1:size(sorted,3)
                 wider= 0;
                 clear loc; peak = [];
                 while 1

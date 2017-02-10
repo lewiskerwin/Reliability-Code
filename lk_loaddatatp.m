@@ -1,7 +1,8 @@
-function [data, cfg] = lk_loaddatatp(cfg)
+function [tempdata, cfg] = lk_loaddatatp(cfg)
 % THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
 cd(cfg.DrivePathData); cd('matfiles');%We're looking at Matfiles
-clear data idx fNames  include 
+if strcmp(cfg.ProjectName,'vlpfc_TBS') cd('For_Lewis'); else; end;
+clear tempdata idx fNames  include 
 tmp = dir('*.mat'); %tmp is a structure that contains all these names
 fNames = cell(size(tmp,1),1); %fNames is an array of cells of same size as tmp
 cnt = 1;%counts number of mat files loaded. Unsure if necessary
@@ -13,14 +14,17 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     
     %%
     %Inclusion Criteria
-    for icondinclude = 1:size(cfg.file.precond_include,1) %go through each inclusion criteria
-        if isempty(strfind(fNames{i,1},cfg.file.precond_include{icondinclude}))%Does file have this inclusion criteria
-            idx(i) = 0;
-            break
-        else idx(i) = 1;
+    if ~isempty(cfg.file.precond_include)
+        for icondinclude = 1:size(cfg.file.precond_include,1) %go through each inclusion criteria
+            if isempty(strfind(fNames{i,1},cfg.file.precond_include{icondinclude}))%Does file have this inclusion criteria
+                idx(i) = 0;
+                break
+            else idx(i) = 1;
+            end
         end
+        if ~idx(i),continue,end
+    else
     end
-    if ~idx(i),continue,end
     %%
     %Exclusion Criteria
     for iexclude=1:length(cfg.file.precond_exclude)%Now go through exclusion criteria
@@ -34,19 +38,22 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     
     %
     %Make sure file contains one of the desired timepoints
-    for itp = 1:length(cfg.file.tp)% Go through each relevant subject
-        if ~isempty(strfind(fNames{i,1},cfg.file.tp{itp}))
-            idx(i) =1;
-            break
-        else idx(i) = 0;
+    if ~(isempty(cfg.file.tp))
+        for itp = 1:length(cfg.file.tp)% Go through each relevant subject
+            if ~isempty(strfind(fNames{i,1},cfg.file.tp{itp}))
+                idx(i) =1;
+                break
+            else idx(i) = 0;
+            end
         end
+        if ~idx(i),continue,end
+    else itp =1;
     end
-    if ~idx(i),continue,end
     
     %%
     %Make sure file contains one of the desired subs
     for isub = 1:length(cfg.file.subs)% Go through each relevant subject
-        if ~isempty(strfind(fNames{i,1},cfg.file.subs{isub}))
+        if ~isempty(strfind(fNames{i,1},[cfg.file.subprefix cfg.file.subs{isub}]))
             idx(i) =1;
             break
         else idx(i) = 0;
@@ -69,25 +76,40 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     if ~idx(i),continue,end
 
     %%
-    %Actually load data if we've made it this far
-    data(isub,itp,icond) = load(fNames{i,1});%Load data
-    data(isub,itp,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
-    data(isub,itp,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
-    data(isub,itp,icond).EEG.subject = cfg.file.subs{isub};%save sub name
-    data(isub,itp,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
+    %Actually load tempdata if we've made it this far
+    tempdata(isub,itp,icond) = load(fNames{i,1});%Load tempdata
+    tempdata(isub,itp,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
+    tempdata(isub,itp,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
+    tempdata(isub,itp,icond).EEG.subject = cfg.file.subs{isub};%save sub name
+    tempdata(isub,itp,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
     disp(['Loading matfile for sub ' cfg.file.subs{isub} ' timepoint ' num2str(itp) ' condition ' cfg.file.preconds{icond}  '...']);
     %Now Load and label each data file...
-    %data(isub,itp,icond).EEG.baseline_variance = nanmean(nanmean(var(data(isub,itp,icond).EEG.data,1)));
+    %tempdata(isub,itp,icond).EEG.baseline_variance = nanmean(nanmean(var(tempdata(isub,itp,icond).EEG.tempdata,1)));
     
     cnt = cnt + 1;
     
-    if cfg.trialnumber > size(data(isub,itp,icond).EEG.data,3)
-    cfg.trialnumber = size(data(isub,itp,icond).EEG.data,3);
+    if cfg.trialnumber > size(tempdata(isub,itp,icond).EEG.data,3)
+    cfg.trialnumber = size(tempdata(isub,itp,icond).EEG.data,3);
     end
 end
+
+cnt=1;
+for isub = 1:size(tempdata,1)
+    if any(cellfun(@isempty,{tempdata(isub,:,:).EEG})) % IF THERE IS ANY EMPTY CELL FOR THIS SUB
+        %tempdata(strcmp(tempdata,'1000'))=[]  
+        disp(['Removing files for sub ' cfg.file.subs{isub} ' because incomplete']);
+    else
+        tempdata(cnt,:,:) = tempdata(isub,:,:);
+        cnt=cnt+1;
+    end
+     
+end
+ tempdata(cnt:end,:,:) = [];
+
+
 idx = find(idx);
 cfg.trialnumber = floor(cfg.trialnumber/cfg.trialincr)*cfg.trialincr;
-cfg.condnumber= size(data,3);
-cfg.subnumber= size(data,1);
-cfg.tpnumber= size(data,2);
+cfg.condnumber= size(tempdata,3);
+cfg.subnumber= size(tempdata,1);
+cfg.tpnumber= size(tempdata,2);
 end

@@ -5,14 +5,13 @@ figure('Position', [100, 100, 1450, 1200])
 
 %DEFINE PARTS OF STRUCTURE TO PLOT
 %fieldnames(reliability); - can use this for higher versatility
-comparisonlabel = {'Condition 1 vs 2', 'Split 1 vs 2', 'Odd vs Even Trials'};
 fctoplot = [cfg.feature{ifeature} cfg.comparison{icomparison}];
 stattoplot(:)= {'CCC','pearson','ICC'};
 statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
 featurelabel(:) = {'Peak Latency', 'Peak Amplitude', 'Area Under Curve (Centered Window)', 'Area Under Curve (Standard Window)'};
 width=length(stattoplot);
 
-colorstring = 'ymcrgb';
+colorstring = 'kmcrgb';
 Legend= 0;
 timetoplot = (cfg.trialincr:cfg.trialincr:cfg.trialnumber)';
 
@@ -34,6 +33,7 @@ for iwndw=1:size(cfg.peak.target,2)
         %ALTERNATIVE LINE IF WE WANNA SEE ERROR
         line(ireg) = shadedErrorBar(timetoplot,datatoplot,errortoplot,{['-o' colorstring(ireg)],'markerfacecolor',colorstring(ireg)},1);
     end
+    if istat<5; plot([0 cfg.trialnumber],[0.90 0.90],'-.','color','k'); else; end;
     hold off
     
     %Add "odd vs even" only on top row of graphs
@@ -41,7 +41,7 @@ for iwndw=1:size(cfg.peak.target,2)
         %Top middle gets special AUC vs LAT
         if istat == (floor(width/2)+1)
             TITLE = '%s in %s \n %s \n %s-ms peak';
-            title(sprintf(TITLE,featurelabel{ifeature},comparisonlabel{icomparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
+            title(sprintf(TITLE,featurelabel{ifeature},cfg.comparisonlabel{icomparison},statlabel{istat},cfg.peak.wndwnames{iwndw}));
         else
             TITLE = '%s \n %s-ms peak';
             title(sprintf(TITLE,statlabel{istat},cfg.peak.wndwnames{iwndw}));

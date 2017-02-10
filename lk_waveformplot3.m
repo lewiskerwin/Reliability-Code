@@ -1,10 +1,10 @@
-function lk_waveformplot(reliability,cfg,iTI,ireg,isub)
+function lk_waveformplot(data,cfg,iTI,ireg,isub)
 
 clear timeidx
 
 span=10;
 timerange = 1:300;
-timeidx = find(reliability.times(:,1,1)==timerange(1)):find(reliability.times(:,1,1)==timerange(end));
+timeidx = find(data.times(:,1,1)==timerange(1)):find(data.times(:,1,1)==timerange(end));
 %Note: time idx currently does not include zero 
 trialmax=iTI*10;
 fewtrials =5;
@@ -17,17 +17,21 @@ for icond =1:cfg.condnumber
 for itrial=1:trialmax
     
    %splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-   trialstoplot(:,cnt) = mean(mean(reliability.amp(cfg.regs(ireg).chan,timeidx,itrial,icond,isub),1),3);
+   trialstoplot(:,cnt) = mean(mean(data.amp(cfg.regs(ireg).chan,timeidx,itrial,icond,isub),1),3);
   
-   latencytoplot (:,cnt) = reliability.amplat(ireg,:,itrial,icond,isub,iTI);
-   peakmax = max(max(max(abs(reliability.ampmax(ireg,:,1:trialmax,:,isub,iTI)))));
-   aucmax =  max(max(max(abs(reliability.ampauc(ireg,:,1:trialmax,:,isub,iTI)))));
-   AUCtoplot(:,cnt) = (reliability.ampauc(ireg,:,itrial,icond,isub,iTI)*peakmax)/aucmax;
-   legendnames{cnt} = sprintf('Condition %d Split %d',icond,itrial);
+   
    
    cnt=cnt+1;
 end
 end
+
+latencytoplot = data.amplat.(cfg.comparison{icomparison}).mean(ireg,:,idist,isub);
+amptoplot = data.ampmax.(cfg.comparison{icomparison}).mean(ireg,:,idist,isub);
+peakmax = max(amptoplot);
+   %peakmax = max(max(max(abs(data.ampmax(ireg,:,1:trialmax,:,isub,iTI)))));
+   aucmax =  max(max(max(abs(data.ampauc(ireg,:,1:trialmax,:,isub,iTI)))));
+   AUCtoplot(:,cnt) = (data.ampcauc.(cfg.comparison{icomparison}).mean(ireg,:,idist,isub)*peakmax)/aucmax;
+   %legendnames{cnt} = sprintf('Condition %d Split %d',icond,itrial);
 
 figcnt=1;
 %PLOT TRIALS
@@ -52,8 +56,8 @@ subplot(4,1,figcnt)
 plot (timerange, smoothed,'LineWidth',2);
 title('Smooth and Rectify Average to Find Peaks in Windows of Interest');
 hold on
-aucx = reliability.avgamplat(ireg,:,isub,iTI);
-aucidx = aucx +1 - reliability.times(1,icond,isub);
+aucx = data.avgamplat(ireg,:,isub,iTI);
+aucidx = aucx +1 - data.times(1,icond,isub);
 
 plot ( aucx, smoothed(aucx),'o')
 hold off;
@@ -67,7 +71,7 @@ title('Integrate Area Under Curve for Each Trial');
 
 hold on;
 for iwndw = 1:cfg.wndwnumber
-    peakrange =  reliability.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):reliability.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
+    peakrange =  data.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):data.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
     yline=get(gca,'ylim');
     plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0]);
     for itrial = 1:fewtrials
@@ -86,13 +90,13 @@ figcnt=figcnt+1;
 % 
 % hold on;
 % for iwndw = 1:cfg.wndwnumber
-%     peakrange =  reliability.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):reliability.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
+%     peakrange =  data.avgamplat(ireg,iwndw,isub,iTI) - cfg.peak.width(iwndw):data.avgamplat(ireg,iwndw,isub,iTI) + cfg.peak.width(iwndw);
 %     yline=get(gca,'ylim');
 %     plot([peakrange(1) peakrange(1)],yline,[peakrange(end) peakrange(end) ],yline,'Color',[1 0 0]);
 %     
 %     
 %     %for itrial = 1:fewtrials
-%         aucx = reliability.amplat(ireg,iwndw,1:cfg.fewtrials,:,isub,iTI);
+%         aucx = data.amplat(ireg,iwndw,1:cfg.fewtrials,:,isub,iTI);
 %     %end
 % end
 % box off;xlabel('ms'); ylabel('uV');
@@ -107,13 +111,13 @@ figcnt=figcnt+1;
 % hold on;
 % linemax= max(trialavg);
 % 
-% plot(aucx,mean(mean(reliability.ampauc(ireg,:,:,:,isub,iTI),3),4),'o');
+% plot(aucx,mean(mean(data.ampauc(ireg,:,:,:,isub,iTI),3),4),'o');
 % hold off;
 % figcnt=figcnt+1;
 % 
 % %OTHER
 % subplot(3,2,figcnt)
-% plot(reliability.times(500:750,icond,isub),trialstoplot);
+% plot(data.times(500:750,icond,isub),trialstoplot);
 % hold on
 % plot(latencytoplot,AUCtoplot,'o');
 % hold off
