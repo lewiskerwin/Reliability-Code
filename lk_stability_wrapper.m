@@ -14,7 +14,7 @@ switch cfg.ProjectName
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include(1,:) = {'fromConcat_120'};
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
-        cfg.file.tp = {'tp1';'tp2'};
+        cfg.file.day = {'tp1';'tp2'};
     
     case 'rtms' %New folder within allresults
         cfg.file.subs = {'116';'117';'118'; '119';'120';'121';'122';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
@@ -22,7 +22,7 @@ switch cfg.ProjectName
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include = [];
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
-        cfg.file.tp = {'tp1';'tp2'};
+        cfg.file.day = {'tp1';'tp2'};
         
     case 'Stability'
         %My Config
@@ -31,7 +31,7 @@ switch cfg.ProjectName
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include(1,:) = {'fromConcat_120'};
         cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS'};
-        cfg.file.tp = {'tp1';'tp2'};
+        cfg.file.day = {'tp1';'tp2'};
         
     case 'vlpfc_TBS'
         %Cammie Config
@@ -67,6 +67,10 @@ cfg.wndwnumber = size(cfg.peak.target,2);
 
 cfg.numsplit= 2;
 cfg.trialincr = 10;
+cfg.itnumber=2; %10 interations can increase to 100
+cfg.sampleperboot = cfg.trialincr/1; % For each boot, take 50%
+
+
 
 %fieldnames(data); - can use this for higher versatility
 cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
@@ -75,15 +79,15 @@ cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
 
 %LOAD DATA BASED ON INCLUSION/EXCLUSION CRITERIA
 % [tempdata, cfg] = lk_loaddata(cfg); % Need to make cd() work better
-% cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.tpnumber;
+% cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.daynumber;
 % cfg.TInumber = floor(cfg.trialnumber/cfg.trialincr);
 
 [tempdata,cfg] = lk_loaddatatp(cfg);
-cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.tpnumber;
+cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.daynumber;
 cfg.TInumber = floor(cfg.trialnumber/cfg.trialincr);
 cfg.TItocompare = [1,2,4,8];
 
-if isempty(cfg.file.tp) 
+if isempty(cfg.file.day) 
     cfg.comparison = {'alt','split','cond', 'timepoint','TI'};
     cfg.comparisonlabel = {'Odd vs Even Trials','Split 1 vs 2','Condition 1 vs 2','Day 1 vs 2', ['X Trials vs ' num2str(cfg.trialnumber)]};
 else
@@ -112,11 +116,11 @@ clear data
 cnt=1;
 cutinitialtime=1;
 for isub=1:cfg.subnumber
-    for itp =1:cfg.tpnumber
+    for iday =1:cfg.daynumber
         for icond=1:cfg.condnumber
-            data.amp(:,:,:,icond,itp,isub) = tempdata(isub,itp,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,itp,icond).EEG.data,2),1:cfg.trialnumber);
-            %electrodes x time x trials x cond x tp x sub
-            data.times(:,icond,itp,isub) = tempdata(isub,itp,icond).EEG.times(cutinitialtime:size(tempdata(isub,itp,icond).EEG.data,2));
+            data.amp(:,:,:,icond,iday,isub) = tempdata(isub,iday,icond).EEG.data(:,cutinitialtime:size(tempdata(isub,iday,icond).EEG.data,2),1:cfg.trialnumber);
+            %electrodes x time x trials x cond x day x sub
+            data.times(:,icond,iday,isub) = tempdata(isub,iday,icond).EEG.times(cutinitialtime:size(tempdata(isub,iday,icond).EEG.data,2));
         end
     end
 end
@@ -129,7 +133,7 @@ toc %takes an hour for 5 subs with 100 iterations, with only 1 it
  
  
  
- [stats,data] = lk_halfsampletp_forcammie(data,cfg);
+% [stats,data] = lk_halfsampletp_forcammie(data,cfg);
 
 
 %[data.amplat, data.avgamplat, data.ampauc, data.ampmax] = lk_findwndwtp(data,cfg);
@@ -144,10 +148,11 @@ toc %takes an hour for 5 subs with 100 iterations, with only 1 it
 % %comparison = 4; - FOR TP1 VS TP2
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
-iTI =6;
-ireg =3;
-isub=2;
-lk_waveformplot3(data,cfg,iTI,ireg,isub);
+iTI =1;
+ireg =1;
+isub=1;
+icond=1;
+lk_waveformplot3(data,cfg,iTI,ireg,isub,icond);
 
 
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON CCC

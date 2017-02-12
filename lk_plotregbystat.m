@@ -20,7 +20,7 @@ for istat = 1:width
     
 comparisonlabeled =0;
 datatoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(stattoplot{istat}).mean;
-errortoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(stattoplot{istat}).std;
+errortoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(stattoplot{istat}).sem;
 
 for iwndw=1:size(cfg.peak.target,2)
     subplot(size(cfg.peak.target,2),width,(iwndw-1)*width+istat)
@@ -34,6 +34,7 @@ for iwndw=1:size(cfg.peak.target,2)
         line(ireg) = shadedErrorBar(timetoplot,datatoplot,errortoplot,{['-o' colorstring(ireg)],'markerfacecolor',colorstring(ireg)},1);
     end
     if istat<5; plot([0 cfg.trialnumber],[0.90 0.90],'-.','color','k'); else; end;
+    
     hold off
     
     %Add "odd vs even" only on top row of graphs

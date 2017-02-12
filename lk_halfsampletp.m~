@@ -142,6 +142,7 @@ for iTIsubtractor = 1:cfg.TInumber
                     stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).std(:,:,iTI)/sqrt(cfg.itnumber);
             end
             
+          
             data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).mean(:,:,:,:,iTI) = squeeze(mean(peaktoavg(:, ifeature, :,:,:,:),1));
             %feature . comparison . reg x wndw x dist x sub x TI
             data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).std(:,:,:,:,iTI) = squeeze(std(peaktoavg(:, ifeature,:,:,:,:),1));

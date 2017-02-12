@@ -44,7 +44,7 @@ for ireg = 1:size(cfg.regs,2)
                 
                 
                 %CALC AUC CENTERED ON LATENCY (cauc for 'centered auc')
-                tmp = trapz(peakrangeidx,mean(sorted(cfg.regs(ireg).chan,peakrangeidx,idist,isub),1)); %Intgrate data at that index
+                tmp = trapz(peakrangeidx,mean(sorted(cfg.regs(ireg).chan,peakrangeidx,idist,isub),1)); %Intgrate data (non absolute value) at that index
                 %tmp = tmp/(data(isub,idist).EEG.baseline_variance)^0.5; %An optional step here, where we normalize by dividing by standard deviation of baseline
                 peakdata.ampcauc(ireg,iwndw,idist,isub) = tmp; %Name 'AUC' in data and equate it to the integral above
                 

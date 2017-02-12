@@ -38,16 +38,16 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     
     %
     %Make sure file contains one of the desired timepoints
-    if ~(isempty(cfg.file.tp))
-        for itp = 1:length(cfg.file.tp)% Go through each relevant subject
-            if ~isempty(strfind(fNames{i,1},cfg.file.tp{itp}))
+    if ~(isempty(cfg.file.day))
+        for iday = 1:length(cfg.file.day)% Go through each relevant subject
+            if ~isempty(strfind(fNames{i,1},cfg.file.day{iday}))
                 idx(i) =1;
                 break
             else idx(i) = 0;
             end
         end
         if ~idx(i),continue,end
-    else itp =1;
+    else iday =1;
     end
     
     %%
@@ -77,19 +77,19 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
 
     %%
     %Actually load tempdata if we've made it this far
-    tempdata(isub,itp,icond) = load(fNames{i,1});%Load tempdata
-    tempdata(isub,itp,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
-    tempdata(isub,itp,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
-    tempdata(isub,itp,icond).EEG.subject = cfg.file.subs{isub};%save sub name
-    tempdata(isub,itp,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
-    disp(['Loading matfile for sub ' cfg.file.subs{isub} ' timepoint ' num2str(itp) ' condition ' cfg.file.preconds{icond}  '...']);
+    tempdata(isub,iday,icond) = load(fNames{i,1});%Load tempdata
+    tempdata(isub,iday,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
+    tempdata(isub,iday,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
+    tempdata(isub,iday,icond).EEG.subject = cfg.file.subs{isub};%save sub name
+    tempdata(isub,iday,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
+    disp(['Loading matfile for sub ' cfg.file.subs{isub} ' timepoint ' num2str(iday) ' condition ' cfg.file.preconds{icond}  '...']);
     %Now Load and label each data file...
-    %tempdata(isub,itp,icond).EEG.baseline_variance = nanmean(nanmean(var(tempdata(isub,itp,icond).EEG.tempdata,1)));
+    %tempdata(isub,iday,icond).EEG.baseline_variance = nanmean(nanmean(var(tempdata(isub,iday,icond).EEG.tempdata,1)));
     
     cnt = cnt + 1;
     
-    if cfg.trialnumber > size(tempdata(isub,itp,icond).EEG.data,3)
-    cfg.trialnumber = size(tempdata(isub,itp,icond).EEG.data,3);
+    if cfg.trialnumber > size(tempdata(isub,iday,icond).EEG.data,3)
+    cfg.trialnumber = size(tempdata(isub,iday,icond).EEG.data,3);
     end
 end
 
@@ -104,12 +104,12 @@ for isub = 1:size(tempdata,1)
     end
      
 end
- tempdata(cnt:end,:,:) = [];
+ tempdata(cnt:end,:,:) = []; %shorten the matrix to include only complete subjects
 
 
 idx = find(idx);
 cfg.trialnumber = floor(cfg.trialnumber/cfg.trialincr)*cfg.trialincr;
 cfg.condnumber= size(tempdata,3);
 cfg.subnumber= size(tempdata,1);
-cfg.tpnumber= size(tempdata,2);
+cfg.daynumber= size(tempdata,2);
 end
