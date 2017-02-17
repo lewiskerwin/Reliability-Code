@@ -57,17 +57,16 @@ for iwndw=1:size(cfg.peak.target,2)
     if strcmp(stattoplot{istat}, 'SDC') axis( [0 cfg.trialnumber 0 200]);
     else axis( [0 cfg.trialnumber 0 1]);
     end
-    
-    if iwndw==cfg.wndwnumber
-        xlabel('Trial Number'); %ylabel(statlabel{istat});
-    else
-        xticklabels('off');
-    end
-    
-     if istat==1
-        ylabel([num2str(cfg.peak.target(iwndw)) '-ms Peak'],'FontWeight','bold','Rotation',90); %ylabel(statlabel{istat});
-    else
-    end
+%     
+%     if iwndw==cfg.wndwnumber
+%         xlabel('Trial Number'); %ylabel(statlabel{istat});
+%     else
+%     end
+%     
+%      if istat==1
+%         ylabel([cfg.statlabel{istat}],'FontWeight','bold','Rotation',90); %ylabel(statlabel{istat});
+%     else
+%     end
     
     box off; grid on;
 

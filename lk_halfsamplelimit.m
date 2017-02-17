@@ -1,11 +1,12 @@
 %THIS ONE USES AN 'ALLTRIALKEY' THAT RETAINS INDEXES IN FULL ARRAY OF ALL
 %TRIALS
 
-function [stats,data] = lk_halfsampletp(data,cfg)
+function [stats,data] = lk_halfsamplelimit(data,cfg)
 
 rng(0,'twister');
 
-cfg.bootnumber= cfg.trialnumber*cfg.condnumber*cfg.daynumber/(2*cfg.trialincr); %Have exactly one boot per ten trials (i.e per one block)
+cfg.bootnumber = (cfg.trialnumber*cfg.condnumber) / cfg.bootlength; 
+%Divide total number of trials in biggest comparison (day vs day) by bootlength
 
 clear halfsampleidx
 %CYCLE THROUGH TRIAL NUMBERS 
@@ -15,9 +16,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     cfg.trialmax = iTI*cfg.trialincr; %number of trials we're looking at here
     splitlength = cfg.trialmax/cfg.numsplit; %numsplit is set to 2 for code to work
     
-    cfg.trialperdist = cfg.trialmax*cfg.condnumber*cfg.daynumber/2;
-    bootlength = cfg.trialincr; %Always 10 with half-sampling
-    %featureddata = data.(cfg.feature{feature});
+    cfg.trialperdist = cfg.trialmax*cfg.condnumber*cfg.daynumber/2;%not relevant to this revision
     
     %CYCLE THROUGH COMPARISONS
     for icomparison =1:cfg.compnumber-1 %-1 b/c not including TI here
@@ -26,37 +25,39 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
             case 'alt'
                 alternates = (0:cfg.numsplit:cfg.trialmax-cfg.numsplit)+1;
                 %Get odds for all conditions and days with matrix addition!
-                altsplitrange = reshape(alternates' + (0:cfg.trialnumber:cfg.totaltrialnumber-cfg.trialnumber),1,[]);
+                altsplitrange = alternates + cfg.trialnumber*(cfg.conditionforalt-1);
                 for idist = 1:2;
-                    alltrialkey(iTI,icomparison,idist,1:cfg.trialperdist) =...
+                    alltrialkey(iTI,icomparison,idist,1:splitlength) =...
                         altsplitrange+(idist-1);
                 end
                 
             case 'split'
-                splitlength = cfg.trialmax/cfg.numsplit;
-                splitrange = reshape((1:splitlength)'+(0:cfg.trialnumber:cfg.totaltrialnumber-cfg.trialnumber),1,[]); % keep basic and update in loops below
+                splitrange = 1:splitlength + cfg.trialnumber*(cfg.conditionforsplit-1); % keep basic and update in loops below
                 %ADD CFG HERE THAT RAISES SIZE. VARIABLE SHOULD BE HOW MANY
                 %CONDS PER DIST (2 now with 2 days)
                 for idist = 1:2;
-                    alltrialkey(iTI,icomparison,idist,1:cfg.trialperdist) = ...
+                    alltrialkey(iTI,icomparison,idist,1:splitlength) = ...
                         splitrange+((idist-1)*splitlength);
                 end
                 
             case 'cond'
                 for idist = 1:2;
-                    condrange = reshape((1:cfg.trialmax)' + (0:cfg.daynumber-1)*(cfg.trialnumber*cfg.condnumber),1,[]);
-                    alltrialkey(iTI,icomparison,idist,1:cfg.trialperdist)  = condrange +((idist-1)*cfg.trialnumber);
+                    condrange = 1:cfg.trialmax + cfg.trialnumber*cfg.condnumber*(cfg.dayforcond-1);
+                    alltrialkey(iTI,icomparison,idist,1:cfg.trialmax)  = condrange +((idist-1)*cfg.trialnumber);
                     %TI x comparison x distribution x trial
                 end
                 
                 
-            case 'timepoint'
+            case 'day'
                 %if ~exist(cfg.file.day{:}) break; else end;%If only one day, then don't do comparison between days
                 dayrange = reshape((1:cfg.trialmax)' + (0:cfg.trialnumber:cfg.totaltrialnumber/cfg.daynumber-cfg.trialnumber),1,[]);
                 for idist = 1:2;
-                    alltrialkey(iTI,icomparison,idist,1:cfg.trialperdist) = dayrange +((idist-1)*cfg.trialnumber*2);
+                    alltrialkey(iTI,icomparison,idist,1:cfg.trialmax*cfg.condnumber) = dayrange + ((idist-1)*cfg.trialnumber*2);
                 end
         end
+
+
+        
     end
 end
 
@@ -68,7 +69,7 @@ end
 clear halfsampleidx iterationtrialkey nonconcatidx peaktoavg
 for iit = 1:cfg.itnumber
     for iboot = 1:cfg.bootnumber
-        bootrange=[1:bootlength]+bootlength*(iboot-1);
+        bootrange=[1:cfg.bootlength]+cfg.bootlength*(iboot-1);
         nonconcatidx(:,iboot) = datasample([bootrange],cfg.sampleperboot,'Replace',false);
       
     end
@@ -76,6 +77,20 @@ for iit = 1:cfg.itnumber
     iterationtrialkey(:,:,:,:,iit) = alltrialkey(:,:,:,halfsampleidx(iit,:));
     %TI x comparison x dist x trial x it
 end
+
+%SHOW HOW EVENLY SAMPLING REPRESENTS TRIALS
+iTI = 1;
+cfg.trialmax = iTI*cfg.trialincr;
+cfg.trialperdist= cfg.trialmax/2;
+clear representation;
+for itrial =1:cfg.trialperdist
+    representation(itrial) = sum(sum(halfsampleidx(:,:)==itrial));
+end
+figure
+bar(1:cfg.trialperdist,representation)
+xticklabels(1:cfg.trialperdist);
+xlabel('Trial');ylabel('frequency in iterations');
+
 
 
 %CONCATENATE DATA SO THAT TRIAL KEY CAN BE APPLIED
@@ -91,11 +106,22 @@ for iTIsubtractor = 1:cfg.TInumber
     iTI = cfg.TInumber+1-iTIsubtractor;
     
    cfg.trialmax = iTI*cfg.trialincr; %number of trials we're looking at here
-    cfg.trialperdist = cfg.trialmax*cfg.condnumber*cfg.daynumber/2;
-    trialperit = cfg.trialperdist/2;
+    %cfg.trialperdist = cfg.trialmax*cfg.condnumber*cfg.daynumber/2;
+    %trialperit = cfg.trialperdist/2;
 
     for icomparison = 1:cfg.compnumber-1 %-1 here because we don't cycle through for TI comparison
         clear peaktoavg allit
+       
+        switch icomparison
+            case 1 %'alt'     
+                trialperit = cfg.trialmax/(cfg.numsplit)*(cfg.sampleperboot/cfg.bootlength);
+            case 2 %'split'     
+                trialperit = cfg.trialmax/(cfg.numsplit)*(cfg.sampleperboot/cfg.bootlength);
+            case 3 %'cond'     
+                trialperit = cfg.trialmax*(cfg.sampleperboot/cfg.bootlength);
+            case 4% 'day'    
+                trialperit = cfg.trialmax*cfg.condnumber*(cfg.sampleperboot/cfg.bootlength);
+        end
 
         
         for iit = 1:cfg.itnumber
@@ -124,7 +150,7 @@ for iTIsubtractor = 1:cfg.TInumber
                             statmat = peakdata.(cfg.feature{ifeature});
                             statmat = squeeze(statmat(ireg,iwndw,:,:))';
                             [allit.(cfg.feature{ifeature}).pearson(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).tp(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).CCC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).ICC(ireg,iwndw,iit), allit.(cfg.feature{ifeature}).SDC(ireg,iwndw,iit)] =...
-                                lk_stats(statmat,cfg);
+                             lk_stats(statmat,cfg);
                             
                         end
                     end
@@ -142,7 +168,6 @@ for iTIsubtractor = 1:cfg.TInumber
                     stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).std(:,:,iTI)/sqrt(cfg.itnumber);
             end
             
-          
             data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).mean(:,:,:,:,iTI) = squeeze(mean(peaktoavg(:, ifeature, :,:,:,:),1));
             %feature . comparison . reg x wndw x dist x sub x TI
             data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).std(:,:,:,:,iTI) = squeeze(std(peaktoavg(:, ifeature,:,:,:,:),1));
@@ -152,7 +177,7 @@ for iTIsubtractor = 1:cfg.TInumber
         
         %NOW SAVE ITERATIONS IF THE COMPARISON IS COND vs COND (FOR CAMMIE
         %MULTIPLE DAYS WILL NOT BE LUMPED TOGETHER)
-        if icomparison ==1
+        if icomparison ==3
             dims = size(peaktoavg);
             
             if strcmp(cfg.ProjectName, 'vlpfc_TBS')
