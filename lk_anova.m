@@ -1,19 +1,20 @@
 
-function [anovadata, stats] = lk_anova(data,cfg)
+function [anovadata, stats] = lk_anova(data,cfg,ifeature)
 
 iTI = floor(cfg.trialnumber/cfg.trialincr);
 cfg.trialmax = iTI * cfg.trialincr;
 splitlength=cfg.trialmax/cfg.numsplit;
 cnt=1;
+textsize=14;
 cfg.anovagroup = {'Subject','Day','Condition','Split'};
 
 for iday = 1:cfg.daynumber
     for icond = 1:cfg.condnumber
         for isplit= 1:cfg.numsplit
             %startingrow = ...
-             %   (iday-1)*cfg.condnumber*cfg.trialnumber + ...
-              %  (icond-1)*cfg.trialnumber + ...
-               % (isplit-1)*splitlength;
+            %   (iday-1)*cfg.condnumber*cfg.trialnumber + ...
+            %  (icond-1)*cfg.trialnumber + ...
+            % (isplit-1)*splitlength;
             %anovatrialkey(startingrow+1:startingrow+splitlength,1) = splitrange + startingrow;
             %anovatrialkey(startingrow+1:startingrow+splitlength,2) = iday;
             %anovatrialkey(startingrow+1:startingrow+splitlength,3) = icond;
@@ -27,14 +28,14 @@ for iday = 1:cfg.daynumber
             %elec x time x block x sub
             
             
-
+            
             cnt=cnt+1;
         end
     end
 end
 
 %QUANITFY PEAKS
-[anovapeaks] = lk_findwndw_sortfirst(anovadata,cfg); 
+[anovapeaks] = lk_findwndw_sortfirst(anovadata,cfg);
 %feature . reg x wndw x block x sub
 
 %RESHAPE DATA SO SUBJECT IS ONE MORE GROUP
@@ -48,13 +49,13 @@ end
 %ADD SUBJECT AS A ROW TO GROUPS MATRIX
 dimensions = size(anovagroups_nosub);
 for isub = 1:cfg.subnumber
-   blockrange = (1:dimensions(1)) +(isub-1)*dimensions(1);
+    blockrange = (1:dimensions(1)) +(isub-1)*dimensions(1);
     anovagroups(blockrange,1+(1:dimensions(2))) = anovagroups_nosub;
     anovagroups(blockrange,1) = isub;
     % rows are blocks; columns are categories (sub, day, cond, split)
 end
 
-%RUN ANOVA 
+%RUN ANOVA
 for ifeature = 1:size(cfg.feature,2)
     for ireg = 1:cfg.regnumber
         for iwndw = 1:cfg.wndwnumber
@@ -66,9 +67,14 @@ for ifeature = 1:size(cfg.feature,2)
                 = ([tbl{2:length(cfg.anovagroup)+1,6}])';
             stats.(cfg.feature{ifeature}).anova.P(ireg,iwndw,1:length(cfg.anovagroup))...
                 = ([tbl{2:length(cfg.anovagroup)+1,7}])';
-            
         end
     end
+end
+
+%COMPUTE WHERE F MUST BE TO REJECT NULL
+degreeoffreedom = cell2mat([tbl(2:length(cfg.anovagroup)+2,3)]);
+for igroup = 1:size(cfg.anovagroup,2)
+    sigline(igroup) = finv(.95,degreeoffreedom(igroup),degreeoffreedom(end))
 end
 
 %PLOT ANOVA
@@ -77,25 +83,38 @@ for iwndw =1:cfg.wndwnumber
     
     datatoplot = squeeze(stats.(cfg.feature{ifeature}).anova.F(:,iwndw,:));
     subplot(cfg.wndwnumber,1,iwndw)
-     boxplot(datatoplot)
-     switch iwndw
-         case 1
-             TITLE = 'Sources of Variance of %s \n %d-ms'; 
-             title(sprintf(TITLE,cfg.featurelabel{ifeature},cfg.peak.target(iwndw)));
-             xticklabels('')
-         case cfg.wndwnumber   
+    bphandle = boxplot(datatoplot);
+    hold on
+    set(bphandle,'linewidth',2);
+    xbars(1,:) = (1:size(cfg.feature,2))-0.5; xbars(2,:)=xbars(1,:)+1;
+    ybars = repmat(sigline,2,1);
+    plot(xbars,ybars,'--k','linewidth',2);
+    hold off
+    switch iwndw
+%         case 1
+%             TITLE = 'Sources of Variance of %s \n %d-ms';
+%             title(sprintf(TITLE,cfg.featurelabel{ifeature},cfg.peak.target(iwndw)));
+%             xticklabels('')
+        case cfg.wndwnumber
             xlabel('Variable','fontweight','Bold'); xticklabels(cfg.anovagroup); set(gca,'fontweight','bold');
             TITLE ='%d-ms';
             title(sprintf(TITLE,cfg.peak.target(iwndw)));
-         otherwise
+        otherwise
             TITLE ='%d-ms';
             title(sprintf(TITLE,cfg.peak.target(iwndw)));
             xticklabels('')
-     end
-     ylabel('F-Value','fontweight','normal','rot',90);
-     %ADD HORIZONTAL LINE FOR WEHRE P VALUE IS! There's a matlab function
-     %for this
+    end
+    ylabel('F-Value','fontweight','normal','rot',90);
+    %ADD HORIZONTAL LINE FOR WEHRE P VALUE IS! There's a matlab function
+    %for this
 end
+
+Date = datestr(today('datetime'));
+fname = [cfg.ProjectName '_ANOVA_' cfg.feature{ifeature} '_' Date];
+cd(cfg.stabilityresults);
+ckSTIM_saveFig(fname,textsize,textsize,300,'',4,[6 8]);
+
+
 
 end
 

@@ -17,7 +17,7 @@ switch cfg.ProjectName
         cfg.file.day = {'tp1';'tp2'};
     
     case 'rtms' %New folder within allresults
-        cfg.file.subs = {'116';'117';'118'; '119';'120';'121';'122';}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+        cfg.file.subs = {'116'; '119';'120';'121';'122';'124';'125';'126'}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
         cfg.file.subprefix = 'rtms_';
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include = [];
@@ -72,6 +72,7 @@ cfg.trialincr = 10;
 
 %fieldnames(data); - can use this for higher versatility
 cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
+cfg.featurelabel = {'Peak Latency', 'Peak Amplitude', 'Area Under Curve (Centered Window)', 'Area Under Curve (Standard Window)'};
 cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
 
 
@@ -85,8 +86,8 @@ cfg.totaltrialnumber = cfg.trialnumber*cfg.condnumber*cfg.daynumber;
 cfg.TInumber = floor(cfg.trialnumber/cfg.trialincr);
 cfg.TItocompare = [1,2,4,8];
 
-if isempty(cfg.file.day) 
-    cfg.comparison = {'alt','split','cond', 'timepoint','TI'};
+if ~isempty(cfg.file.day) 
+    cfg.comparison = {'alt','split','cond', 'day','TI'};
     cfg.comparisonlabel = {'Odd vs Even Trials','Split 1 vs 2','Condition 1 vs 2','Day 1 vs 2', ['X Trials vs ' num2str(cfg.trialnumber)]};
 else
     cfg.comparison = {'alt','split','cond','TI'}; 
@@ -125,8 +126,9 @@ end
 cfg.alltimes = data.times(:,1,1); 
 
 
-cfg.itnumber=50; %10 interations can increase to 100
-cfg.sampleperboot = cfg.trialincr/1; % For each boot, take 50%
+cfg.itnumber=10; %10 interations can increase to 100
+cfg.bootlength = cfg.trialincr/2; %Makes 5 long for compatiblity with alt/split
+cfg.sampleperboot = round(cfg.bootlength/2,0); % For each boot, take 50%
 
 clear stats
 tic
@@ -134,13 +136,16 @@ cfg.sampleperboot=5;
 [stats,data] = lk_halfsampletp(data,cfg);
 toc %takes an hour for 5 subs with 100 iterations, with only 1 it
  
+
+
 tic
 cfg.conditionforalt =1;
 cfg.conditionforsplit = 1;
 cfg.dayforcond = 1;
 [stats,data] = lk_halfsamplelimit(data,cfg);
 toc
-% [stats,data] = lk_halfsampletp_forcammie(data,cfg);
+
+[anovadata, stats] = lk_anova(data,cfg);
 
 
 %[data.amplat, data.avgamplat, data.ampauc, data.ampmax] = lk_findwndwtp(data,cfg);
@@ -163,13 +168,18 @@ lk_waveformplot3(data,cfg,iTI,ireg,isub,icond);
 
 
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON CCC
-ifeature = 2; %Adjust here
+ifeature = 1; %Adjust here
 icomparison = 1; %and here
 lk_plotregbystat(stats,cfg,ifeature,icomparison);
 
-istat=1
+istat=4;
 
 lk_plotregbycomp(stats,cfg,ifeature,istat);
+for ifeature=1:length(cfg.feature)
+lk_plotregbycompwithpic(stats,cfg,ifeature,istat);
+end
+
+
 
 %TO MAKE THIS LINE WORK WE NEED TO HAVE LK_HALFSAMPLE RECORD AVERAGED
 %LATENCY, AMP AND AUC AS WELL AS CALCULATING STATS (SIMILAR TO THE "FOR

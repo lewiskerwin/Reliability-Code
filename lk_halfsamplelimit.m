@@ -11,7 +11,7 @@ cfg.bootnumber = (cfg.trialnumber*cfg.condnumber) / cfg.bootlength;
 clear halfsampleidx
 %CYCLE THROUGH TRIAL NUMBERS 
 %MUST CYCLE THROUGH TI BECAUSE SPLITS CHANGE AS FUNCTION OF TI
-alltrialkey = zeros(cfg.trialnumber/cfg.trialincr,size(cfg.comparison,2),2,cfg.trialnumber*cfg.daynumber*cfg.condnumber/2);
+cfg.alltrialkey = zeros(cfg.trialnumber/cfg.trialincr,size(cfg.comparison,2),2,cfg.trialnumber*cfg.daynumber*cfg.condnumber/2);
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     cfg.trialmax = iTI*cfg.trialincr; %number of trials we're looking at here
     splitlength = cfg.trialmax/cfg.numsplit; %numsplit is set to 2 for code to work
@@ -27,7 +27,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 %Get odds for all conditions and days with matrix addition!
                 altsplitrange = alternates + cfg.trialnumber*(cfg.conditionforalt-1);
                 for idist = 1:2;
-                    alltrialkey(iTI,icomparison,idist,1:splitlength) =...
+                    cfg.alltrialkey(iTI,icomparison,idist,1:splitlength) =...
                         altsplitrange+(idist-1);
                 end
                 
@@ -36,14 +36,14 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 %ADD CFG HERE THAT RAISES SIZE. VARIABLE SHOULD BE HOW MANY
                 %CONDS PER DIST (2 now with 2 days)
                 for idist = 1:2;
-                    alltrialkey(iTI,icomparison,idist,1:splitlength) = ...
+                    cfg.alltrialkey(iTI,icomparison,idist,1:splitlength) = ...
                         splitrange+((idist-1)*splitlength);
                 end
                 
             case 'cond'
                 for idist = 1:2;
                     condrange = 1:cfg.trialmax + cfg.trialnumber*cfg.condnumber*(cfg.dayforcond-1);
-                    alltrialkey(iTI,icomparison,idist,1:cfg.trialmax)  = condrange +((idist-1)*cfg.trialnumber);
+                    cfg.alltrialkey(iTI,icomparison,idist,1:cfg.trialmax)  = condrange +((idist-1)*cfg.trialnumber);
                     %TI x comparison x distribution x trial
                 end
                 
@@ -52,7 +52,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 %if ~exist(cfg.file.day{:}) break; else end;%If only one day, then don't do comparison between days
                 dayrange = reshape((1:cfg.trialmax)' + (0:cfg.trialnumber:cfg.totaltrialnumber/cfg.daynumber-cfg.trialnumber),1,[]);
                 for idist = 1:2;
-                    alltrialkey(iTI,icomparison,idist,1:cfg.trialmax*cfg.condnumber) = dayrange + ((idist-1)*cfg.trialnumber*2);
+                    cfg.alltrialkey(iTI,icomparison,idist,1:cfg.trialmax*cfg.condnumber) = dayrange + ((idist-1)*cfg.trialnumber*2);
                 end
         end
 
@@ -74,7 +74,7 @@ for iit = 1:cfg.itnumber
       
     end
     halfsampleidx(iit,:) = reshape(nonconcatidx,[1 cfg.sampleperboot*cfg.bootnumber]);
-    iterationtrialkey(:,:,:,:,iit) = alltrialkey(:,:,:,halfsampleidx(iit,:));
+    iterationtrialkey(:,:,:,:,iit) = cfg.alltrialkey(:,:,:,halfsampleidx(iit,:));
     %TI x comparison x dist x trial x it
 end
 

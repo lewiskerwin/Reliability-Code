@@ -9,7 +9,8 @@ timeidx = find(data.times(:,1,1)==timerange(1)):find(data.times(:,1,1)==timerang
 %Note: time idx currently does not include zero 
 trialmax=iTI*10;
 fewtrials =5;
-figure
+textsize = 16;
+figure('Position', [100, 100, 400, 600])
 clear splitrange trialstoplot latencytoplot AUCtoplot legendnames   
 
 
@@ -26,27 +27,34 @@ clear splitrange trialstoplot latencytoplot AUCtoplot legendnames
 figcnt=1;
 %1. PLOT TRIALS
 cnt=1;
-for itrial=1:trialmax
-   %splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
-   trialstoplot(:,cnt) = mean(mean(data.amp(cfg.regs(ireg).chan,timeidx,itrial,icond,cfg.dayforcond,isub),1),3);
-    cnt=cnt+1;
-end
+% for itrial=1:trialmax
+%    %splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
+%    trialstoplot(:,cnt) = mean(mean(data.amp(cfg.regs(ireg).chan,timeidx,itrial,icond,cfg.dayforcond,isub),1),3);
+%         
+   trials = squeeze(cfg.alltrialkey(iTI,icomparison,icond,1:trialmax/2));
+      trialstoplot(:,:) = ...
+          squeeze(mean(data.amp(cfg.regs(ireg).chan,timeidx,trials,cfg.dayforcond,isub),1));
+
+%    cnt=cnt+1;
+% end
+
 subplot(3,1,figcnt)
-plot(timerange,trialstoplot(:,1:trialmax),'LineWidth',2);
+plot(timerange,trialstoplot(:,1:trialmax/2),'LineWidth',2);
 hold on;
 ylim=get(gca,'ylim');
 xlim = get(gca,'xlim');
 axis([xmin,xlim(2),ylim(1),ylim(2)]);
 plot([0 0],[ylim(2) ylim(1)],'k-.')
-text(-10,(ylim(2)-(ylim(2)-ylim(1))/10),'Pulse','FontWeight','Bold');
-%title('Load Individual Trials (for a given region of interest)');
+%text(-10,(ylim(2)-(ylim(2)-ylim(1))/10),'Pulse','FontWeight','Bold');
+%title('Load Individual Trials (for a given region ofdd interest)');
 %Now plot avg
 trialavg = mean(trialstoplot,2);
-expandedtrialavg = trialavg*(max(max(abs(trialstoplot(:,1:trialmax))))/max(abs(trialavg)));
-plot (timerange, expandedtrialavg,'-k','LineWidth',2);
+expandedtrialavg = trialavg*(max(max(abs(trialstoplot(:,1:trialmax/2))))/max(abs(trialavg)));
+plot (timerange, expandedtrialavg,'-k','LineWidth',3);
 plot([xmin xmax],[0 0],'--k');
 figcnt=figcnt+1;
-box off; xticklabels(''); ylabel('uV'); hold off;
+box off; xticklabels(''); ylabel('uV','fontsize',textsize); hold off;
+set(gca,'fontsize',textsize);
 
 % PLOT AVG (OF ALL TRIALS)
 % trialavg = mean(trialstoplot,2);
@@ -75,10 +83,10 @@ ylim=get(gca,'ylim');
 xlim = get(gca,'xlim');
 axis([xmin,xlim(2),ylim(1),ylim(2)]);
 plot([0 0],[ylim(2) ylim(1)],'k-.')
-text(-10,(ylim(2)-(ylim(2)-ylim(1))/10),'Pulse','FontWeight','Bold');
+%text(-10,(ylim(2)-(ylim(2)-ylim(1))/10),'Pulse','FontWeight','Bold');
 %FIND LAT and AMP
-peaklat = data.amplat.cond.mean(ireg,:,icond,isub,iTI);
-peakamp = data.ampmax.cond.mean(ireg,:,icond,isub,iTI);
+peaklat = data.amplat.(cfg.comparison{icomparison}).mean(ireg,:,icond,isub,iTI);
+peakamp = data.ampmax.(cfg.comparison{icomparison}).mean(ireg,:,icond,isub,iTI);
 plot([peaklat' peaklat']',[zeros(cfg.wndwnumber,1) peakamp']','k--');
 plot([zeros(cfg.wndwnumber,1)+xmin peaklat']',[peakamp' peakamp']','k--');
 aucidx = peaklat +1 - data.times(1,icond,isub);
@@ -86,11 +94,12 @@ aucidx = peaklat +1 - data.times(1,icond,isub);
 %     peaktimeidx(iwndw) = find(data.times(:,1,1)==round(peaklat(iwndw),0));
 % end
 peaktimeidx = peaklat-xmin;
-plot ( peaklat, smoothed(peaktimeidx),'o')
+plot ( round(peaklat,0), smoothed(round(peaktimeidx,0)),'o')
 %plot (peaklat,peakamp,'o');
 %plot (peaklat, trialavg(round(peaklat,0)),'o')
 hold off;
-box off;xticklabels(''); ylabel('|uV|');
+box off;xticklabels(''); ylabel('|uV|','fontsize',textsize);
+set(gca,'fontsize',textsize);
 figcnt=figcnt+1;
 
 
@@ -103,7 +112,7 @@ ylim=get(gca,'ylim');
 xlim = get(gca,'xlim');
 axis([xmin,xlim(2),ylim(1),ylim(2)]);
 plot([0 0],[ylim(2) ylim(1)],'k-.')
-text(-10,(ylim(2)-(ylim(2)-ylim(1))/10),'Pulse','FontWeight','Bold');
+%text(-10,(ylim(2)-(ylim(2)-ylim(1))/10),'Pulse','FontWeight','Bold');
 %Show Integration
 for iwndw = 1:cfg.wndwnumber
     peakrange =  peaklat(iwndw) - cfg.peak.width(iwndw) : peaklat(iwndw) + cfg.peak.width(iwndw);
@@ -115,14 +124,17 @@ end
 hold off;
 figcnt=figcnt+1;
 %title('Integrate Area Under Curve for Avg Waveform');
-box off;xlabel('ms'); ylabel('uV');
+box off;
+xticks([xmin:100:xmax])
+set(gca,'xticklabel',[xmin:100:xmax],'fontsize',textsize)
+xlabel('ms','fontsize',textsize); ylabel('uV','fontsize',textsize);
 
 %APPLY COREY'S FUNCTION
 
 Date = datestr(today('datetime'));
 fname = [cfg.ProjectName '_Wave_Reg' num2str(ireg) 'Sub' num2str(isub) 'TI' num2str(iTI) '_' Date];
 cd(cfg.stabilityresults);
-ckSTIM_saveFig(fname,10,10,300,'',4,[10 8]);
+ckSTIM_saveFig(fname,textsize,textsize,300,'',4,[6 8]);
 
 
 

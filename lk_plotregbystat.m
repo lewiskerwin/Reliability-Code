@@ -51,9 +51,7 @@ for iwndw=1:size(cfg.peak.target,2)
 
     end
    
-    
-    xlabel('Trial Number'); %ylabel(statlabel{istat});
-    
+        
     if strcmp(stattoplot{istat}, 'SDC') axis( [0 cfg.trialnumber 0 200]);
     else axis( [0 cfg.trialnumber 0 1]);
     end
@@ -76,14 +74,22 @@ for iwndw=1:size(cfg.peak.target,2)
 end
 
 end
-subplot(4,3,8);
-plotposa = get(gca,'Position');
-subplot(4,3,11);%go to middle bottom
-plotposb = get(gca,'Position');
-hL = legend([line.mainLine],cfg.regs(:).name,'Orientation','horizontal','box','off');
-onebelow = plotposb(2)-(plotposa(2)-plotposb(2));
-legpos = [plotposb(1) onebelow+0.05 0.2 0.2];
-        set(hL,'Position', legpos,'box','off');
+% subplot(4,3,8);
+% plotposa = get(gca,'Position');
+% subplot(4,3,11);%go to middle bottom
+% plotposb = get(gca,'Position');
+% hL = legend([line.mainLine],cfg.regs(:).name,'Orientation','Vertical','box','off');
+% onebelow = plotposb(2)-(plotposa(2)-plotposb(2));
+% legpos = [plotposb(1) onebelow+0.05 0.2 0.2];
+
+subplot(height,width,width);
+plotposr = get(gca,'Position');
+subplot(height,width,width-1);
+plotposl = get(gca,'Position');
+hL = legend([line.mainLine],cfg.regs(:).name,'Orientation','Vertical','box','off');
+oneover = plotposr(1)+(plotposr(1)-plotposl(1))/2;
+legpos = [oneover plotposr(2) 0.2 0.2];
+set(hL,'Position', legpos,'box','off');
 
 Date = datestr(today('datetime'));
 fname = [cfg.ProjectName '_' cfg.feature{ifeature} '_' cfg.comparison{icomparison} '_' [stattoplot{:}] '_' Date];
