@@ -1,7 +1,7 @@
 %THIS ONE USES AN 'ALLTRIALKEY' THAT RETAINS INDEXES IN FULL ARRAY OF ALL
 %TRIALS
 
-function [stats,data] = lk_halfsamplelimit(data,cfg)
+function [cfg,stats,data] = lk_halfsamplelimit(data,cfg)
 
 rng(0,'twister');
 
@@ -42,7 +42,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 
             case 'cond'
                 for idist = 1:2;
-                    condrange = 1:cfg.trialmax + cfg.trialnumber*cfg.condnumber*(cfg.dayforcond-1);
+                    condrange = (1:cfg.trialmax) + cfg.trialnumber*cfg.condnumber*(cfg.dayforcond-1);
                     cfg.alltrialkey(iTI,icomparison,idist,1:cfg.trialmax)  = condrange +((idist-1)*cfg.trialnumber);
                     %TI x comparison x distribution x trial
                 end
@@ -173,6 +173,12 @@ for iTIsubtractor = 1:cfg.TInumber
             data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).std(:,:,:,:,iTI) = squeeze(std(peaktoavg(:, ifeature,:,:,:,:),1));
             data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).sem(:,:,:,:,iTI) = ...
                 data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).std(:,:,:,:,iTI)/sqrt(cfg.itnumber);
+            %SAVE A MAT FOR MT QUANTIFICATION
+            if (iTI == cfg.TInumber & icomparison == 3)
+                data.(cfg.feature{ifeature}).MTcomp.mean(:,:,:,:,cfg.dayforcond) = data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).mean(:,:,:,:,iTI);
+                data.(cfg.feature{ifeature}).MTcomp.sem(:,:,:,:,cfg.dayforcond) = data.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).sem(:,:,:,:,iTI);
+                %feature . reg x wndw x dist x sub x day
+             else; end
         end
         
         %NOW SAVE ITERATIONS IF THE COMPARISON IS COND vs COND (FOR CAMMIE
@@ -214,7 +220,7 @@ for iTIsubtractor = 1:cfg.TInumber
                         stats.(cfg.feature{ifeature}).TI.(cfg.stat{istat}).std(:,:,iTI)/sqrt(cfg.itnumber);
                 end
             end
-        else %i.e. if this icomp is not condition vs condition 
+        else %i.e. if this icomparison is not condition vs condition 
         end
         
     end

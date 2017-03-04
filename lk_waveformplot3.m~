@@ -50,7 +50,7 @@ plot([0 0],[ylim(2) ylim(1)],'k-.')
 %Now plot avg
 trialavg = mean(trialstoplot,2);
 expandedtrialavg = trialavg*(max(max(abs(trialstoplot(:,1:trialmax/2))))/max(abs(trialavg)));
-plot (timerange, expandedtrialavg,'-k','LineWidth',4);
+plot (timerange, expandedtrialavg,'-k','LineWidth',3);
 plot([xmin xmax],[0 0],'--k');
 figcnt=figcnt+1;
 box off; xticklabels(''); ylabel('uV','fontsize',textsize); hold off;
@@ -75,7 +75,7 @@ set(gca,'fontsize',textsize);
 %3. SMOOTH AND ABS
 smoothed = abs(smooth(trialavg,5));
 subplot(3,1,figcnt)
-plot (timerange, smoothed,'-k','LineWidth',2);
+plot (timerange, smoothed,'-r','LineWidth',2);
 %title('Smooth and Rectify Average to Find Peaks in Windows of Interest');
 hold on
 %Show Pulse
@@ -105,7 +105,7 @@ figcnt=figcnt+1;
 
 %4. PLOT AVG AGAIN WITH AUC
 subplot(3,1,figcnt)
-plot (timerange, trialavg,'-k','LineWidth',2)
+plot (timerange, trialavg,'-r','LineWidth',2)
 hold on
 %Show pulse
 ylim=get(gca,'ylim');

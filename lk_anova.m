@@ -1,5 +1,5 @@
 
-function [anovadata, stats] = lk_anova(data,cfg,ifeature)
+function [anovadata, stats] = lk_anova(data,stats,cfg,ifeature)
 
 iTI = floor(cfg.trialnumber/cfg.trialincr);
 cfg.trialmax = iTI * cfg.trialincr;
@@ -78,42 +78,43 @@ for igroup = 1:size(cfg.anovagroup,2)
 end
 
 %PLOT ANOVA
-figure('Position', [100, 100, 600, 1200])
-for iwndw =1:cfg.wndwnumber
-    
-    datatoplot = squeeze(stats.(cfg.feature{ifeature}).anova.F(:,iwndw,:));
-    subplot(cfg.wndwnumber,1,iwndw)
-    bphandle = boxplot(datatoplot);
-    hold on
-    set(bphandle,'linewidth',2);
-    xbars(1,:) = (1:size(cfg.feature,2))-0.5; xbars(2,:)=xbars(1,:)+1;
-    ybars = repmat(sigline,2,1);
-    plot(xbars,ybars,'--k','linewidth',2);
-    hold off
-    switch iwndw
-%         case 1
-%             TITLE = 'Sources of Variance of %s \n %d-ms';
-%             title(sprintf(TITLE,cfg.featurelabel{ifeature},cfg.peak.target(iwndw)));
-%             xticklabels('')
-        case cfg.wndwnumber
-            xlabel('Variable','fontweight','Bold'); xticklabels(cfg.anovagroup); set(gca,'fontweight','bold');
-            TITLE ='%d-ms';
-            title(sprintf(TITLE,cfg.peak.target(iwndw)));
-        otherwise
-            TITLE ='%d-ms';
-            title(sprintf(TITLE,cfg.peak.target(iwndw)));
-            xticklabels('')
+for ifeature = 1:size(cfg.feature,2)
+    figure('Position', [100, 100, 600, 1200])
+    for iwndw =1:cfg.wndwnumber
+        
+        datatoplot = squeeze(stats.(cfg.feature{ifeature}).anova.F(:,iwndw,:));
+        subplot(cfg.wndwnumber,1,iwndw)
+        bphandle = boxplot(datatoplot);
+        hold on
+        set(bphandle,'linewidth',2);
+        xbars(1,:) = (1:size(cfg.feature,2))-0.5; xbars(2,:)=xbars(1,:)+1;
+        ybars = repmat(sigline,2,1);
+        plot(xbars,ybars,'--k','linewidth',2);
+        hold off
+        switch iwndw
+            case 1
+                TITLE = 'Sources of Variance of %s \n %d-ms';
+                title(sprintf(TITLE,cfg.featurelabel{ifeature},cfg.peak.target(iwndw)));
+                xticklabels('')
+            case cfg.wndwnumber
+                xlabel('Variable','fontweight','Bold'); xticklabels(cfg.anovagroup); set(gca,'fontweight','bold');
+                TITLE ='%d-ms';
+                title(sprintf(TITLE,cfg.peak.target(iwndw)));
+            otherwise
+                TITLE ='%d-ms';
+                title(sprintf(TITLE,cfg.peak.target(iwndw)));
+                xticklabels('')
+        end
+        ylabel('F-Value','fontweight','normal','rot',90);
+        %ADD HORIZONTAL LINE FOR WEHRE P VALUE IS! There's a matlab function
+        %for this
     end
-    ylabel('F-Value','fontweight','normal','rot',90);
-    %ADD HORIZONTAL LINE FOR WEHRE P VALUE IS! There's a matlab function
-    %for this
+    
+    Date = datestr(today('datetime'));
+    fname = [cfg.ProjectName '_ANOVA_' cfg.feature{ifeature} '_' Date];
+    cd(cfg.stabilityresults);
+    ckSTIM_saveFig(fname,textsize,textsize,300,'',4,[6 8]);
 end
-
-Date = datestr(today('datetime'));
-fname = [cfg.ProjectName '_ANOVA_' cfg.feature{ifeature} '_' Date];
-cd(cfg.stabilityresults);
-ckSTIM_saveFig(fname,textsize,textsize,300,'',4,[6 8]);
-
 
 
 end

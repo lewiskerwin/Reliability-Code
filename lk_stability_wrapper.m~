@@ -17,11 +17,11 @@ switch cfg.ProjectName
         cfg.file.day = {'tp1';'tp2'};
     
     case 'rtms' %New folder within allresults
-        cfg.file.subs = {'116'; '119';'120';'121';'122';'124';'125';'126'}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
+        cfg.file.subs = {'116'; '118'; '119';'120';'121';'122';'123';'124';'125';'126';'127';'128'}; cfg.file.preconds = {'1';'2'};%'final';'washout'};
         cfg.file.subprefix = 'rtms_';
         cfg.file.precondprefix = {'pre', ''; '_', '_'};
         cfg.file.precond_include = [];
-        cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS','fromConcat'};
+        cfg.file.precond_exclude(1,:) = {'arm', 'PostRTMS','PreRTMS','fromConcat','bad'};
         cfg.file.day = {'tp1';'tp2'};
         
     case 'Stability'
@@ -58,12 +58,6 @@ end
         axisname{ireg} = cfg.regs(ireg).name;
  end
   
-cfg.peak.target = [30, 60, 110, 200];
-cfg.peak.wiggle = [15, 15, 35, 55]; %How far from target condition avg can be
-cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
-cfg.peak.width = [5, 5, 10, 15];
-cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
-cfg.wndwnumber = size(cfg.peak.target,2);
 
 cfg.numsplit= 2;
 cfg.trialincr = 10;
@@ -73,6 +67,7 @@ cfg.trialincr = 10;
 %fieldnames(data); - can use this for higher versatility
 cfg.feature = {'amplat', 'ampmax', 'ampcauc', 'ampsauc'};
 cfg.featurelabel = {'Peak Latency', 'Peak Amplitude', 'Area Under Curve (Centered Window)', 'Area Under Curve (Standard Window)'};
+cfg.featureaxislabel = {'Peak Latency (ms)';'Peak Amplitude (uv)';'Area Under Curve (arb. units)';'Area Under Curve (arb. units)'};
 cfg.stat = {'pearson', 'tp', 'CCC', 'ICC', 'SDC'};
 
 
@@ -125,28 +120,55 @@ for isub=1:cfg.subnumber
 end
 cfg.alltimes = data.times(:,1,1); 
 
+%% FIND PEAKS UNGUIDED
+cfg.wndwnumber = 4;
+cfg.alltimes
+clear timeidx peakidxrange
+xmin=0;
+xmax=250;
+timerange = xmin:xmax;
+timeidx = find(data.times(:,1,1)==timerange(1)):find(data.times(:,1,1)==timerange(end));
 
-cfg.itnumber=10; %10 interations can increase to 100
+alldata = mean(abs(mean(mean(mean(mean(data.amp(:,:,:,:,:,:),6),3),4),5)),1);
+smoothed = smooth(alldata,10)
+figure
+plot(timerange,smoothed(timeidx));
+[peakamp,peakloc] = findpeaks(double(smoothed))
+%peakidxrange = find(cfg.alltimes>0 & find(cfg.alltimes<250))
+peakidx = (find(peakloc >timeidx(1) & peakloc<timeidx(end)))
+peakloc = peakloc(peakidx)
+peakamp = peakamp(peakidx)
+[peakamp,heightsortidx] = sort(peakamp,'descend');
+peakloc = peakloc(heightsortidx);
+cfg.peak.target = sort(cfg.alltimes(peakloc(1:cfg.wndwnumber))');
+gavpeaks=  sort(cfg.alltimes(peakloc(1:cfg.wndwnumber))');
+partition(2:cfg.wndwnumber) = gavpeaks(2:
+
+cfg.peak.wiggle = [15, 15, 35, 55]; %How far from target condition avg can be
+cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be
+cfg.peak.width = [5, 5, 10, 15];
+cfg.peak.wndwnames = strread(num2str(cfg.peak.target),'%s');
+
+%%
+%SAMPLE DATA
+
+cfg.itnumber=4; %10 interations can increase to 100
 cfg.bootlength = cfg.trialincr/2; %Makes 5 long for compatiblity with alt/split
-cfg.sampleperboot = round(cfg.bootlength/2,0); % For each boot, take 50%
+cfg.sampleperboot = cfg.bootlength; %round(cfg.bootlength/2,0); % For each boot, take 50%
 
 clear stats
-tic
-cfg.sampleperboot=5;
-[stats,data] = lk_halfsampletp(data,cfg);
-toc %takes an hour for 5 subs with 100 iterations, with only 1 it
- 
-
-
 tic
 cfg.conditionforalt =1;
 cfg.conditionforsplit = 1;
 cfg.dayforcond = 1;
-[stats,data] = lk_halfsamplelimit(data,cfg);
+[cfg, stats ,data] = lk_halfsamplelimit(data,cfg);
 toc
 
-[anovadata, stats] = lk_anova(data,cfg);
 
+
+for ifeature=1:size(cfg.feature,2)
+    [anovadata, stats] = lk_anova(data,stats,cfg,ifeature);
+end
 
 %[data.amplat, data.avgamplat, data.ampauc, data.ampmax] = lk_findwndwtp(data,cfg);
 %%
@@ -160,25 +182,29 @@ toc
 % %comparison = 4; - FOR TP1 VS TP2
 
 % %WAVEFORM FIGURE (CONTAINS COREY'S SAVE FIG)
-iTI =2;
+iTI =14;
 ireg =1;
 isub=1;
 icond=1;
-lk_waveformplot3(data,cfg,iTI,ireg,isub,icond);
+icomparison=1;
+lk_waveformplot3(data,cfg,iTI,ireg,isub,icond,icomparison);
 
 
 %PLOT EFFECT OF INCREASING TRIAL NUMBER ON CCC
-ifeature = 1; %Adjust here
-icomparison = 1; %and here
+ifeature = 4; %Adjust here
+icomparison = 3; %and here
 lk_plotregbystat(stats,cfg,ifeature,icomparison);
 
-istat=4;
-
-lk_plotregbycomp(stats,cfg,ifeature,istat);
+istat=5;
+istat=3;
 for ifeature=1:length(cfg.feature)
 lk_plotregbycompwithpic(stats,cfg,ifeature,istat);
 end
 
+%PLOT EACH WNDW SEPARATELY
+for iwndw=1:cfg.wndwnumber
+    lk_plotregbycomp_onewndw(stats,cfg,ifeature,istat,iwndw);
+end
 
 
 %TO MAKE THIS LINE WORK WE NEED TO HAVE LK_HALFSAMPLE RECORD AVERAGED
@@ -186,13 +212,15 @@ end
 %CAMMIE" VERSION).
 lk_plotTIbar(data,stats,cfg,ifeature,istat);
 
+%MOTOR THRESHOLD
+[cfg] = lk_motorthreshold(cfg,data,iTI);
+
 
 %%
 %PEARSON TIME - need to rewrite for AUCTI
 %start with split 1 vs 2 AND cond 1 vs cond 2 in many different splits
 iTI=10;
 data=lk_pearson(data,cfg,iTI);
-
 
  %%
 %PRESENT ICC FINDINGS FOR HIGHEST TRIAL NUMBER

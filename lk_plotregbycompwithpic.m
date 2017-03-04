@@ -10,14 +10,14 @@ fctoplot = [cfg.feature{ifeature}];
 %stattoplot(:)= {'CCC','pearson','ICC'};
 %statlabel(:) = {'Concordance Correlation Coefficient', 'Pearson Coefficient', 'Intraclass Correlation Coefficient'}';
 featurelabel(:) = {'Peak Latency', 'Peak Amplitude', 'Area Under Curve (Centered Window)', 'Area Under Curve (Standard Window)'};
-width= size(cfg.comparison,2);
+width= size(cfg.comparison,2)-1;
 
 colorstring = 'kmcrgb';
 Legend= 0;
 timetoplot = (cfg.trialincr:cfg.trialincr:cfg.trialnumber)';
 
 
-for icomparison = 1:cfg.compnumber
+for icomparison = 1:width
     
     comparisonlabeled =0;
     datatoplot_allreg = stats.(cfg.feature{ifeature}).(cfg.comparison{icomparison}).(cfg.stat{istat}).mean;
@@ -28,7 +28,7 @@ for icomparison = 1:cfg.compnumber
     compimage = imread(['comp' num2str(icomparison) '.png']);
     subplot(size(cfg.peak.target,2)+1,width,icomparison)
     imshow(compimage);
-    if icomparison == 3
+    if icomparison == floor(width/2)
             TITLE = '%s of %s \n \n %s';
            % titlebox = text(0,1450,sprintf(TITLE,cfg.stat{istat},featurelabel{ifeature}),'FontSize',12);
             title(sprintf(TITLE,cfg.stat{istat},featurelabel{ifeature},cfg.comparisonlabel{icomparison}),'FontSize',12);
@@ -51,7 +51,11 @@ for iwndw=1:size(cfg.peak.target,2)
         line(ireg) = shadedErrorBar(timetoplot,datatoplot,errortoplot,{['-o' colorstring(ireg)],'markerfacecolor',colorstring(ireg)},1);
         
     end
-    if istat<5; plot([0 cfg.trialnumber],[0.80 0.80],'-.','color','k'); else; end;
+    if istat<5;
+        plot([0 cfg.trialnumber],[0.80 0.80],'-.','color','k');
+        plot([0 cfg.trialnumber],[0.60 0.60],'-.','color','k');
+        
+    else; end;
     hold off
    
     if iwndw==cfg.wndwnumber
@@ -75,11 +79,11 @@ end
 
 end
 
-middlepenultimate = ((cfg.wndwnumber-2)+1)*cfg.compnumber+floor((cfg.compnumber+1)/2);
-subplot(cfg.wndwnumber+1,cfg.compnumber,middlepenultimate);
+middlepenultimate = ((cfg.wndwnumber-2)+1)*width+floor((width)/2);
+subplot(cfg.wndwnumber+1,width,middlepenultimate);
 plotposa = get(gca,'Position');
-middlebottom = ((cfg.wndwnumber-1)+1)*cfg.compnumber+floor((cfg.compnumber+1)/2);
-subplot(cfg.wndwnumber+1,cfg.compnumber,middlebottom);
+middlebottom = ((cfg.wndwnumber-1)+1)*width+floor((width)/2);
+subplot(cfg.wndwnumber+1,width,middlebottom);
 plotposb = get(gca,'Position');
 hL = legend([line.mainLine],cfg.regs(:).name,'Orientation','horizontal','box','off');
 onebelow = plotposb(2)-(plotposa(2)-plotposb(2));
