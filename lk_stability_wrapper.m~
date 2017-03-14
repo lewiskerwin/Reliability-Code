@@ -129,7 +129,7 @@ xmax=250;
 timerange = xmin:xmax;
 timeidx = find(data.times(:,1,1)==timerange(1)):find(data.times(:,1,1)==timerange(end));
 
-alldata = mean(abs(mean(mean(mean(mean(data.amp(1,:,:,:,:,:),6),3),4),5)),1);
+alldata = mean(abs(mean(mean(mean(mean(data.amp(:,:,:,:,:,:),6),3),4),5)),1);
 smoothed = smooth(alldata,10)
 figure
 plot(timerange,smoothed(timeidx));
@@ -142,7 +142,7 @@ peakamp = peakamp(peakidx)
 peakloc = peakloc(heightsortidx);
 cfg.peak.target = sort(cfg.alltimes(peakloc(1:cfg.wndwnumber))');
 gavpeaks=  sort(cfg.alltimes(peakloc(1:cfg.wndwnumber))');
-partition(2:cfg.wndwnumber) = (gavpeaks(1:cfg.wndwnumber-1)+gavpeaks(2:cfg.wndwnumber))./2
+partition(2:cfg.wndwnumber) = gavpeaks(2:
 
 cfg.peak.wiggle = [15, 15, 35, 55]; %How far from target condition avg can be
 cfg.peak.precision = cfg.peak.wiggle ./2; %How far from cond avg, each split can be

@@ -1,9 +1,7 @@
-function [tempdata, cfg] = lk_loaddata(cfg)
+function [tempdata, cfg] = lk_loaddatatp(cfg)
 % THIS LOOP LOADS RELEVANT MAT FILES INTO the STRUCTURE 'DATA'
-cd(cfg.DrivePathData); 
-% if cfg.ProjectName == 'vlpfc_TBS'    cd('matfiles');cd('For_Lewis');
-% else  cd('matfiles');%We're looking at Matfiles
-% end
+cd(cfg.DrivePathData); cd('matfiles');%We're looking at Matfiles
+if strcmp(cfg.ProjectName,'vlpfc_TBS') cd('For_Lewis'); else; end;
 clear tempdata idx fNames  include 
 tmp = dir('*.mat'); %tmp is a structure that contains all these names
 fNames = cell(size(tmp,1),1); %fNames is an array of cells of same size as tmp
@@ -38,10 +36,24 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     end
     if ~idx(i),continue,end
     
+    %
+    %Make sure file contains one of the desired timepoints
+    if ~(isempty(cfg.file.day))
+        for iday = 1:length(cfg.file.day)% Go through each relevant subject
+            if ~isempty(strfind(fNames{i,1},cfg.file.day{iday}))
+                idx(i) =1;
+                break
+            else idx(i) = 0;
+            end
+        end
+        if ~idx(i),continue,end
+    else iday =1;
+    end
+    
     %%
     %Make sure file contains one of the desired subs
     for isub = 1:length(cfg.file.subs)% Go through each relevant subject
-        if ~isempty(strfind(fNames{i,1},cfg.file.subs{isub}))
+        if ~isempty(strfind(fNames{i,1},[cfg.file.subprefix cfg.file.subs{isub}]))
             idx(i) =1;
             break
         else idx(i) = 0;
@@ -64,28 +76,40 @@ for i = 1:size(tmp,1);%Go through each file in folder that ends in mat
     if ~idx(i),continue,end
 
     %%
-    %Actually load data if we've made it this far
-    tempdata(isub,icond) = load(fNames{i,1});%Load tempdata
-    tempdata(isub,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
-    tempdata(isub,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
-    tempdata(isub,icond).EEG.subject = cfg.file.subs{isub};%save sub name
-    tempdata(isub,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
-    disp(['Loading matfile for sub ' cfg.file.subs{isub} ' condition ' cfg.file.preconds{icond}  '...']);
+    %Actually load tempdata if we've made it this far
+    tempdata(isub,iday,icond) = load(fNames{i,1});%Load tempdata
+    tempdata(isub,iday,icond).EEG.condition = cfg.file.preconds{icond};%save cond name
+    tempdata(isub,iday,icond).EEG.conditionidx = icond;%Save cond idx MAY BE UNECESSARY IF DATA is 2D
+    tempdata(isub,iday,icond).EEG.subject = cfg.file.subs{isub};%save sub name
+    tempdata(isub,iday,icond).EEG.subjectidx = isub; %save sub idx MAY BE UNECESSARY IF DATA is 2D
+    disp(['Loading matfile for sub ' cfg.file.subs{isub} ' timepoint ' num2str(iday) ' condition ' cfg.file.preconds{icond}  '...']);
     %Now Load and label each data file...
-    tempdata(isub,icond).EEG.baseline_variance=nanmean(nanmean(var(tempdata(isub,icond).EEG.data,1)));
-    
-    if cfg.trialnumber > size(tempdata(isub,icond).EEG.data,3)
-    cfg.trialnumber = size(tempdata(isub,icond).EEG.data,3);
-    end
+    %tempdata(isub,iday,icond).EEG.baseline_variance = nanmean(nanmean(var(tempdata(isub,iday,icond).EEG.tempdata,1)));
     
     cnt = cnt + 1;
     
-
+    if cfg.trialnumber > size(tempdata(isub,iday,icond).EEG.data,3)
+    cfg.trialnumber = size(tempdata(isub,iday,icond).EEG.data,3);
+    end
 end
+
+cnt=1;
+for isub = 1:size(tempdata,1)
+    if any(cellfun(@isempty,{tempdata(isub,:,:).EEG})) % IF THERE IS ANY EMPTY CELL FOR THIS SUB
+        %tempdata(strcmp(tempdata,'1000'))=[]  
+        disp(['Removing files for sub ' cfg.file.subs{isub} ' because incomplete']);
+    else
+        tempdata(cnt,:,:) = tempdata(isub,:,:);
+        cnt=cnt+1;
+    end
+     
+end
+ tempdata(cnt:end,:,:) = []; %shorten the matrix to include only complete subjects
+
+
 idx = find(idx);
 cfg.trialnumber = floor(cfg.trialnumber/cfg.trialincr)*cfg.trialincr;
-cfg.condnumber= size(tempdata,2);
+cfg.condnumber= size(tempdata,3);
 cfg.subnumber= size(tempdata,1);
-cfg.tpnumber= 1;
-
+cfg.daynumber= size(tempdata,2);
 end

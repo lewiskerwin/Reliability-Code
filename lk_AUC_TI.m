@@ -9,16 +9,15 @@ for iTI = 1:cfg.trialnumber/cfg.trialincr
                 % for ielec = 1:size(data(isub,icond).EEG.data,1)%each electrode
                 
                 for iwndw = 1:size(cfg.peak.target,2)% each time window
-                    for isplit = 1:cfg.numsplit% each trial
-                        
-                        
+                    for itrial = 1:cfg.trialnumber% each trial
+                                               
                         TEPtimes = reliability.times(:,icond,isub); %Name array for the TEP times from raw data
                         peakrange = find( cfg.peak.width >= abs(TEPtimes - reliability.avgamplat(ireg,iwndw,isub,iTI))); %Make array of idx of desired times
-                        splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
+                        %splitrange = ((isplit-1)*iTI*cfg.trialincr/cfg.numsplit)+1:isplit*iTI*cfg.trialincr/cfg.numsplit;
 
-                        tmp = trapz(peakrange,mean(mean(reliability.amp(cfg.regs(ireg).chan,peakrange,splitrange,icond,isub),1),3)); %Intgrate data at that index
+                        tmp = trapz(peakrange,mean(reliability.amp(cfg.regs(ireg).chan,peakrange,itrial,icond,isub),1)); %Intgrate data at that index
                         %tmp = tmp/(data(isub,icond).EEG.baseline_variance)^0.5; %An optional step here, where we normalize by dividing by standard deviation of baseline
-                        reliability.ampauc(ireg,iwndw,isplit,icond,isub,iTI) = tmp; %Name 'AUC' in data and equate it to the integral above
+                        reliability.ampauc(ireg,iwndw,itrial,icond,isub,iTI) = tmp; %Name 'AUC' in data and equate it to the integral above
                       
                         
                         

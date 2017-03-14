@@ -15,7 +15,7 @@ for isub = 1:cfg.subnumber
                 splitstoplot(:,cnt) = smooth(mean(mean(reliability.amp(cfg.regs(ireg).chan,500:750,splitrange,icond,isub),1),3),span);
                 
                 latencytoplot (:,cnt) = reliability.amplat(ireg,:,isplit,icond,isub,iTI);
-                AUCtoplot(:,cnt) = reliability.ampauc(ireg,:,isplit,icond,isub,iTI)*5./max(max(max(abs(reliability.ampauc(ireg,:,:,:,isub,iTI)))));
+                AUCtoplot(:,cnt) = reliability.ampaucalt(ireg,:,isplit,icond,isub,iTI)*5./max(max(max(abs(reliability.ampaucsplit(ireg,:,:,:,isub,iTI)))));
                 legendnames{cnt} = sprintf('Condition %d with %d trials',icond,iTI*cfg.trialincr);
                 
                 cnt=cnt+1;

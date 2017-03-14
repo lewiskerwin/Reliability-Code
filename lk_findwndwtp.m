@@ -4,7 +4,7 @@ clear lat amplat
 
 for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
     
-    for ireg = 1:size(cfg.regs,2)
+    for ireg = 1:cfg.regnumber
         for isub = 1:cfg.subnumber
             
             %These are the arrays of peak locations and peak amplitudes that are near each PEAK
@@ -13,7 +13,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 %Find peaks of all splits and conds combined
                 wider= 0;
                 clear loc; peak = [];
-                alltimes = reliability.times(:,1,isub);
+                alltimes = reliability.times(:,1,1,isub);
                 while 1
                     targettimerange = [cfg.peak.target(iwndw)-cfg.peak.wiggle(iwndw)-wider, cfg.peak.target(iwndw)+cfg.peak.wiggle(iwndw)+wider];
                     targettimeidx = find( alltimes >= targettimerange(1) & alltimes <= targettimerange(2));
@@ -21,7 +21,7 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                     %temporarily took out smoothing
                     
                     
-                    targetdata = smooth(double(abs(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*cfg.trialincr,:,isub),1),3),4)')),5);
+                    targetdata = smooth(double(abs(mean(mean(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,1:iTI*cfg.trialincr,:,:,isub),1),3),4),5)')),5);
                     [peak, loc] = findpeaks(targetdata);
                     
                     if isempty(peak) wider = wider +5;
@@ -40,40 +40,42 @@ for iTI = 1:floor(cfg.trialnumber/cfg.trialincr)
                 peakrangelat = alltimes(peakrangeidx);
                 
                 %FOR EACH TRIAL...
-                for icond = 1:size(cfg.file.preconds)
-                    for itrial = 1:cfg.trialnumber% each trial
-                        %SAVE AMP AT SUB'S AVG LATENCY
-                        ampmax(ireg,iwndw,itrial,icond,isub,iTI) = bestpeak;
-                        
-                        
-                        %CALC AUC AT SUB's AVG LATENCY
-                        tmp = trapz(peakrangeidx,mean(reliability.amp(cfg.regs(ireg).chan,peakrangeidx,itrial,icond,isub),1)); %Intgrate data at that index
-                        %tmp = tmp/(data(isub,icond).EEG.baseline_variance)^0.5; %An optional step here, where we normalize by dividing by standard deviation of baseline
-                        ampauc(ireg,iwndw,itrial,icond,isub,iTI) = tmp; %Name 'AUC' in data and equate it to the integral above
-                        
-                        %CALCULATE LAT FOR GIVEN TRIAL
-                        wider= 0;
-                        clear loc; peak = [];
-                        alltimes = reliability.times(:,icond,isub);
-                        while 1
-                            newpeaktarget = avgamplat(ireg,iwndw,isub,iTI);
-                            targettimerange = [newpeaktarget-cfg.peak.precision(iwndw)-wider, newpeaktarget+cfg.peak.precision(iwndw)+wider];
-                            targettimeidx = find( alltimes >= targettimerange(1) & alltimes <= targettimerange(2));
-                            targetdata = smooth(double(abs(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,itrial,icond,isub),1),3)')),10);
-                            %QC to ensure there's actually data here
-                            if ~any(targetdata)
-                                errormsg = 'Error! %s at %d ms in subject %s cond %s is empty!';
-                                disp(sprintf(errormsg,cfg.regs(ireg).name,cfg.peak.target(iwndw),cfg.file.subs{isub},cfg.file.preconds{icond}));
-                                break;
-                            else end;
+                for itp = 1:cfg.tpnumber
+                    for icond = 1:cfg.condnumber
+                        for itrial = 1:cfg.trialnumber% each trial
+                            %SAVE AMP AT SUB'S AVG LATENCY
+                            ampmax(ireg,iwndw,itrial,icond,itp,isub,iTI) = bestpeak;
                             
-                            [peak, loc] = findpeaks(targetdata);
-                            if isempty(peak) wider = wider +5;
-                            else break; end
+                            
+                            %CALC AUC AT SUB's AVG LATENCY
+                            tmp = trapz(peakrangeidx,mean(reliability.amp(cfg.regs(ireg).chan,peakrangeidx,itrial,icond,itp,isub),1)); %Intgrate data at that index
+                            %tmp = tmp/(data(isub,icond).EEG.baseline_variance)^0.5; %An optional step here, where we normalize by dividing by standard deviation of baseline
+                            ampauc(ireg,iwndw,itrial,icond,isub,iTI) = tmp; %Name 'AUC' in data and equate it to the integral above
+                            
+                            %CALCULATE LAT FOR GIVEN TRIAL
+                            wider= 0;
+                            clear loc; peak = [];
+                            alltimes = reliability.times(:,icond,itp,isub);
+                            while 1
+                                newpeaktarget = avgamplat(ireg,iwndw,isub,iTI);
+                                targettimerange = [newpeaktarget-cfg.peak.precision(iwndw)-wider, newpeaktarget+cfg.peak.precision(iwndw)+wider];
+                                targettimeidx = find( alltimes >= targettimerange(1) & alltimes <= targettimerange(2));
+                                targetdata = smooth(double(abs(mean(mean(reliability.amp(cfg.regs(ireg).chan,targettimeidx,itrial,icond,itp,isub),1),3)')),10);
+                                %QC to ensure there's actually data here
+                                if ~any(targetdata)
+                                    errormsg = 'Error! %s at %d ms in subject %s tp%s cond %s is empty!';
+                                    disp(sprintf(errormsg,cfg.regs(ireg).name,cfg.peak.target(iwndw),cfg.file.subs{isub},num2str(itp),cfg.file.preconds{icond}));
+                                    break;
+                                else end;
+                                
+                                [peak, loc] = findpeaks(targetdata);
+                                if isempty(peak) wider = wider +5;
+                                else break; end
+                            end
+                            [bestpeak, bestidx] = max(peak);
+                            bestloc = loc(bestidx);
+                            amplat(ireg,iwndw,itrial,icond,itp,isub,iTI) = bestloc-1 + (newpeaktarget-cfg.peak.precision(iwndw));
                         end
-                        [bestpeak, bestidx] = max(peak);
-                        bestloc = loc(bestidx);
-                        amplat(ireg,iwndw,itrial,icond,isub,iTI) = bestloc-1 + (newpeaktarget-cfg.peak.precision(iwndw));
                     end
                 end
                 
